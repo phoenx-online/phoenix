@@ -12,34 +12,41 @@ The spelling difference between **PHOENIX** and `phoenx.online` is intentional.
 
 ## Current authority
 
-Read these before using any historical runtime or deployment artifact:
+Read these first:
 
 - `SOURCE_OF_TRUTH.md`
-- `MIGRATION_PLAN.md`
+- `PHX_M1_STATUS.md`
 - `DEV_RUNTIME_BASELINE.md`
 - `SECURITY_AUDIT.md`
+- `MIGRATION_PLAN.md`
 - `docs/decisions/ADR-0001-product-independence.md`
 
 ## Product boundary
 
-PHOENIX is operationally separate from:
+PHOENIX is operationally separate from Craniumtek corporate systems, Morning Breaks Global, and iBayong. Integrations must use explicit APIs, events, webhooks, imports/exports, or documented contracts rather than shared application databases, runtime secrets, or deployment jobs.
 
-- Craniumtek corporate systems
-- Morning Breaks Global
-- iBayong
+## PHX-M1 development baseline
 
-Integrations must use explicit APIs, events, webhooks, imports/exports, or documented contracts rather than shared application databases, runtime secrets, or deployment jobs.
+The historical MariaDB/Droplet execution paths have been removed from the current PHX-M1 branch. The new DEV foundation is:
 
-## Repository status
+- Laravel modular monolith
+- PostgreSQL 18 authoritative DEV database
+- Redis 7 for isolated cache/queue use
+- `Dockerfile.dev` + `compose.dev.yml`
+- loopback-only application exposure by default (`127.0.0.1:18080`)
+- generated PHOENIX-only DEV secrets
+- `/healthz` application health endpoint
+- PHPUnit smoke tests
+- PHOENIX-only self-hosted runner target (`phoenix-dev` label)
 
-The original personal repository was transferred natively into the dedicated PHOENIX organization and renamed to this canonical repository. GitHub repository ID `1094814392` was preserved through transfer and rename, along with branch and PR continuity.
+Fresh host verification is required before starting containers. See `PHX_M1_STATUS.md` and run `scripts/verify-dev-host.sh` on the intended older DEV server.
 
-The obsolete historical GitHub Actions workflow that auto-deployed every `main` push to a DigitalOcean droplet has been removed.
+## Quick DEV sequence after host gate
 
-## Runtime warning
+```bash
+bash scripts/make-dev-env.sh .env.dev 18080
+bash scripts/dev-up.sh .env.dev
+bash scripts/dev-health.sh .env.dev
+```
 
-The remaining November 2025 Docker, MariaDB/MySQL, Nginx, environment, and deployment artifacts are historical. They are **not approved as the current PHOENIX runtime definition** and must be modernized before execution.
-
-The approved target architecture is a Laravel modular monolith with PostgreSQL, Redis where justified, Docker-isolated environments, self-hosted GitHub Actions, and separate DEV/staging/production boundaries.
-
-No production deployment or DNS cutover is authorized by the current repository state.
+Do not point `phoenx.online` at DEV. No production deployment or DNS cutover is authorized by the current repository state.

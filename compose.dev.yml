@@ -1,0 +1,66 @@
+name: phoenix-dev
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    working_dir: /workspace
+    env_file:
+      - ${PHOENIX_ENV_FILE:-.env.dev}
+    command: >-
+      bash -lc "composer install --no-interaction --prefer-dist
+      && php artisan serve --host=0.0.0.0 --port=8000"
+    volumes:
+      - ./:/workspace
+      - vendor_data:/workspace/vendor
+    ports:
+      - "127.0.0.1:${PHOENIX_HTTP_PORT:-18080}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - phoenix_dev
+
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-phoenix_dev}
+      POSTGRES_USER: ${DB_USERNAME:-phoenix_dev}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in the selected env file}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-phoenix_dev} -d ${DB_DATABASE:-phoenix_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - phoenix_dev
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - phoenix_dev
+
+volumes:
+  vendor_data:
+  postgres_data:
+  redis_data:
+
+networks:
+  phoenix_dev:
+    driver: bridge
