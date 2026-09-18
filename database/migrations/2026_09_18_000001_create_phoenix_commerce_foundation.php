@@ -32,6 +32,7 @@ return new class extends Migration {
             $table->timestampsTz();
             $table->foreign(['organization_id', 'brand_id'])
                 ->references(['organization_id', 'id'])->on('brands')->cascadeOnDelete();
+            $table->unique(['organization_id', 'id']);
             $table->unique(['organization_id', 'channel', 'external_ref']);
         });
 
@@ -51,6 +52,7 @@ return new class extends Migration {
             $table->string('display_name');
             $table->boolean('is_active')->default(true);
             $table->timestampsTz();
+            $table->unique(['organization_id', 'id']);
         });
     }
 
