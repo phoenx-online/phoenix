@@ -18,17 +18,20 @@ return new class extends Migration {
             $table->foreignUuid('organization_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->timestampsTz();
+            $table->unique(['organization_id', 'id']);
             $table->unique(['organization_id', 'name']);
         });
 
         Schema::create('stores', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('organization_id')->constrained()->cascadeOnDelete();
-            $table->foreignUuid('brand_id')->constrained()->cascadeOnDelete();
+            $table->uuid('brand_id');
             $table->string('name');
             $table->string('channel', 64);
             $table->string('external_ref')->nullable();
             $table->timestampsTz();
+            $table->foreign(['organization_id', 'brand_id'])
+                ->references(['organization_id', 'id'])->on('brands')->cascadeOnDelete();
             $table->unique(['organization_id', 'channel', 'external_ref']);
         });
 
