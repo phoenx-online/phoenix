@@ -1,0 +1,10 @@
+{
+  "project": "PHOENIX",
+  "journeys": [
+    {
+      "name": "public-home-foundation",
+      "path": "/",
+      "mode": "read-only"
+    }
+  ]
+}
