@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import { test, expect } from '@playwright/test';
 
 const manifest = JSON.parse(
@@ -30,7 +29,8 @@ function assertSafeRoute(route) {
     route.startsWith('//') ||
     route.includes('?') ||
     route.includes('#') ||
-    route.includes('\\')
+    route.includes('\\') ||
+    /\s/.test(route)
   ) {
     throw new Error(`Unsafe visual route: ${String(route)}`);
   }
@@ -93,7 +93,7 @@ test('actual-user read-only visual evidence', async ({ page }, testInfo) => {
     const status = response?.status() ?? 0;
 
     expect(status, `${journey.name} returned no HTTP response`).toBeGreaterThan(0);
-    expect(status, `${journey.name} returned server error ${status}`).toBeLessThan(500);
+    expect(status, `${journey.name} returned HTTP ${status}`).toBeLessThan(400);
     await expect(page.locator('body')).toBeVisible();
 
     const screenshotName =
