@@ -16,6 +16,10 @@ on:
           - dev
           - staging
           - production
+      target_release_id:
+        description: Optional deployed app SHA, digest, or release ID; leave blank for exploratory evidence
+        required: false
+        type: string
       paths:
         description: Optional comma-separated read-only paths overriding journeys.json
         required: false
@@ -47,6 +51,7 @@ jobs:
       PROJECT_SLUG: phoenix
       BASE_URL: ${{ inputs.base_url }}
       TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+      TARGET_RELEASE_ID: ${{ inputs.target_release_id }}
       VISUAL_PATHS: ${{ inputs.paths }}
       ALLOW_PRODUCTION_READ_ONLY: ${{ inputs.allow_production_read_only }}
       RETENTION_DAYS: ${{ inputs.retention_days }}
@@ -124,6 +129,7 @@ jobs:
             -e HOST_GID="$runner_gid" \
             -e BASE_URL="$BASE_URL" \
             -e TARGET_ENVIRONMENT="$TARGET_ENVIRONMENT" \
+            -e TARGET_RELEASE_ID="$TARGET_RELEASE_ID" \
             -e VISUAL_PATHS="$VISUAL_PATHS" \
             -e GITHUB_SHA="$GITHUB_SHA" \
             -e PW_OUTPUT_DIR=/evidence/test-results \
@@ -151,7 +157,9 @@ jobs:
           {
             "project": "$PROJECT_SLUG",
             "repository": "$GITHUB_REPOSITORY",
-            "commit_sha": "$GITHUB_SHA",
+            "harness_sha": "$GITHUB_SHA",
+            "target_release_id": "${TARGET_RELEASE_ID:-unknown}",
+            "release_qualified": "$([ -n "${TARGET_RELEASE_ID:-}" ] && printf true || printf false)",
             "run_id": "$GITHUB_RUN_ID",
             "run_attempt": "$GITHUB_RUN_ATTEMPT",
             "target_environment": "$TARGET_ENVIRONMENT",
@@ -166,7 +174,8 @@ jobs:
           {
             echo "### Actual-User Visual Verification"
             echo "- Project: $PROJECT_SLUG"
-            echo "- SHA: $GITHUB_SHA"
+            echo "- Harness SHA: $GITHUB_SHA"
+            echo "- Target release: ${TARGET_RELEASE_ID:-unknown}"
             echo "- Environment: $TARGET_ENVIRONMENT"
             echo "- Status: $JOB_STATUS"
             echo "- Evidence path: $EVIDENCE_DIR"
