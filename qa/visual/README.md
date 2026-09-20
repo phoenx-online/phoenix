@@ -13,7 +13,8 @@ Evidence produced per run:
 - Playwright trace
 - HTML test report
 - console-error, page-error, and failed-request diagnostics
-- exact Git commit SHA, target environment, URL and run timestamp
+- exact test-harness SHA, target environment, URL and run timestamp
+- deployed target SHA/digest/release ID when supplied; otherwise evidence is explicitly exploratory rather than release-qualified
 
 ## Zero-cost-first rule
 
@@ -34,7 +35,7 @@ PHOENIX production is not authorized. This lane is DEV-first and must use the de
 
 ## Run
 
-From GitHub Actions, manually start **Actual User Visual Verification V1** and provide a URL reachable from the dedicated runner.
+From GitHub Actions, manually start **Actual User Visual Verification V1** and provide a URL reachable from the dedicated runner. For release-gate evidence, also provide the exact deployed app SHA, digest, or release identifier in `target_release_id`.
 
 For local execution:
 
