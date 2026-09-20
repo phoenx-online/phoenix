@@ -115,18 +115,23 @@ jobs:
         run: |
           set -Eeuo pipefail
 
+          runner_uid="$(id -u)"
+          runner_gid="$(id -g)"
+          mkdir -p "$EVIDENCE_DIR/work"
+
           docker run --rm --ipc=host \
+            --user "$runner_uid:$runner_gid" \
+            -e HOME=/tmp/pw-home \
             -e BASE_URL="$BASE_URL" \
             -e TARGET_ENVIRONMENT="$TARGET_ENVIRONMENT" \
             -e VISUAL_PATHS="$VISUAL_PATHS" \
             -e GITHUB_SHA="$GITHUB_SHA" \
             -e PW_OUTPUT_DIR=/evidence/test-results \
             -e PW_HTML_REPORT=/evidence/playwright-report \
-            -v "$GITHUB_WORKSPACE:/work" \
+            -v "$GITHUB_WORKSPACE:/source:ro" \
             -v "$EVIDENCE_DIR:/evidence" \
-            -w /work/qa/visual \
             "$PLAYWRIGHT_IMAGE" \
-            bash -lc 'npm install --no-audit --no-fund --ignore-scripts && npx playwright test --config=playwright.config.mjs'
+            bash -lc 'set -Eeuo pipefail; mkdir -p "$HOME" /evidence/work/qa-visual; cp -a /source/qa/visual/. /evidence/work/qa-visual/; cd /evidence/work/qa-visual; npm install --no-audit --no-fund --ignore-scripts --package-lock=false; npx playwright test --config=playwright.config.mjs'
 
       - name: Write immutable evidence metadata
         if: always()
@@ -135,6 +140,11 @@ jobs:
           JOB_STATUS: ${{ job.status }}
         run: |
           set -Eeuo pipefail
+
+          if [ -z "${EVIDENCE_DIR:-}" ] || [ ! -d "$EVIDENCE_DIR" ]; then
+            echo "Evidence directory was not created; metadata step skipped." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
           safe_base_url="${BASE_URL%%\?*}"
           cat > "$EVIDENCE_DIR/run-metadata.json" <<EOF
@@ -168,6 +178,9 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          if [ -z "${EVIDENCE_ROOT:-}" ] || [ ! -d "$EVIDENCE_ROOT" ]; then
+            exit 0
+          fi
           find "$EVIDENCE_ROOT" \
             -mindepth 1 -maxdepth 1 -type d \
             -mtime "+$RETENTION_DAYS" \
