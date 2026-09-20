@@ -35,7 +35,8 @@ test('actual-user read-only visual evidence', async ({ page }, testInfo) => {
   const diagnostics = {
     project: manifest.project,
     targetEnvironment: process.env.TARGET_ENVIRONMENT || 'unspecified',
-    commitSha: process.env.GITHUB_SHA || 'local',
+    harnessSha: process.env.GITHUB_SHA || 'local',
+    targetReleaseId: process.env.TARGET_RELEASE_ID || 'unknown',
     baseUrl: process.env.BASE_URL,
     startedAt: new Date().toISOString(),
     journeys: [],
