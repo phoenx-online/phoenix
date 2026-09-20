@@ -81,7 +81,7 @@ jobs:
             exit 1
           fi
 
-          if [[ "$BASE_URL" == *"?"* || "$BASE_URL" == *"#"* || "$BASE_URL" == *\"* || "$BASE_URL" =~ [[:space:]] ]]; then
+          if [[ "$BASE_URL" == *"?"* || "$BASE_URL" == *"#"* || "$BASE_URL" == *\"* || "$BASE_URL" == *\\* || "$BASE_URL" =~ [[:space:]] ]]; then
             echo "BASE_URL must not contain query strings, fragments, quotes, or whitespace." >&2
             exit 1
           fi
