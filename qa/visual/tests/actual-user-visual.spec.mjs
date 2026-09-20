@@ -23,6 +23,19 @@ function selectedJourneys() {
   return manifest.journeys.filter((journey) => journey.enabled !== false);
 }
 
+function assertSafeRoute(route) {
+  if (
+    typeof route !== 'string' ||
+    !route.startsWith('/') ||
+    route.startsWith('//') ||
+    route.includes('?') ||
+    route.includes('#') ||
+    route.includes('\\')
+  ) {
+    throw new Error(`Unsafe visual route: ${String(route)}`);
+  }
+}
+
 function slug(value) {
   return value
     .toLowerCase()
@@ -74,6 +87,7 @@ test('actual-user read-only visual evidence', async ({ page }, testInfo) => {
 
   for (const [index, journey] of journeys.entries()) {
     expect(journey.mode || 'read-only').toBe('read-only');
+    assertSafeRoute(journey.path);
 
     const response = await page.goto(journey.path, { waitUntil: 'domcontentloaded' });
     const status = response?.status() ?? 0;
