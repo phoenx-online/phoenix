@@ -1,0 +1,174 @@
+name: Actual User Visual Verification V1
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Reachable DEV/STAGING/PROD URL to inspect
+        required: true
+        type: string
+      target_environment:
+        description: Target environment
+        required: true
+        default: staging
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      paths:
+        description: Optional comma-separated read-only paths overriding journeys.json
+        required: false
+        type: string
+      allow_production_read_only:
+        description: Required acknowledgement for production read-only inspection
+        required: true
+        default: false
+        type: boolean
+      retention_days:
+        description: Local evidence retention days on this project's runner
+        required: true
+        default: "14"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: actual-user-visual-verification-phoenix
+  cancel-in-progress: false
+
+jobs:
+  visual-verification:
+    name: browser evidence
+    runs-on: [self-hosted, linux, x64, phoenix-dev]
+    timeout-minutes: 40
+    env:
+      PROJECT_SLUG: phoenix
+      BASE_URL: ${{ inputs.base_url }}
+      TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+      VISUAL_PATHS: ${{ inputs.paths }}
+      ALLOW_PRODUCTION_READ_ONLY: ${{ inputs.allow_production_read_only }}
+      RETENTION_DAYS: ${{ inputs.retention_days }}
+      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.63.0-noble
+
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Enforce visual-test safety policy
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          case "$BASE_URL" in
+            http://*|https://*) ;;
+            *)
+              echo "BASE_URL must begin with http:// or https://" >&2
+              exit 1
+              ;;
+          esac
+
+          if [[ "$BASE_URL" =~ ^https?://[^/]*@ ]]; then
+            echo "Do not embed credentials in BASE_URL" >&2
+            exit 1
+          fi
+
+          if [ "$TARGET_ENVIRONMENT" = "production" ] && [ "$ALLOW_PRODUCTION_READ_ONLY" != "true" ]; then
+            echo "Production visual verification requires explicit read-only acknowledgement." >&2
+            exit 1
+          fi
+
+          if ! [[ "$RETENTION_DAYS" =~ ^[0-9]+$ ]] || [ "$RETENTION_DAYS" -lt 1 ] || [ "$RETENTION_DAYS" -gt 90 ]; then
+            echo "retention_days must be an integer from 1 to 90" >&2
+            exit 1
+          fi
+
+          command -v docker >/dev/null 2>&1 || {
+            echo "Docker is required on the dedicated self-hosted runner." >&2
+            exit 1
+          }
+
+      - name: Prepare private local evidence directory
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          root="$HOME/visual-evidence/$PROJECT_SLUG"
+          run_key="$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_SHA:0:12}-run-${GITHUB_RUN_ID}"
+          evidence_dir="$root/$run_key"
+
+          mkdir -p "$evidence_dir"
+          chmod 700 "$root" "$evidence_dir"
+
+          {
+            echo "EVIDENCE_ROOT=$root"
+            echo "EVIDENCE_DIR=$evidence_dir"
+          } >> "$GITHUB_ENV"
+
+          echo "Evidence: $evidence_dir" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run Playwright actual-user verification
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          docker run --rm --ipc=host \
+            -e BASE_URL="$BASE_URL" \
+            -e TARGET_ENVIRONMENT="$TARGET_ENVIRONMENT" \
+            -e VISUAL_PATHS="$VISUAL_PATHS" \
+            -e GITHUB_SHA="$GITHUB_SHA" \
+            -e PW_OUTPUT_DIR=/evidence/test-results \
+            -e PW_HTML_REPORT=/evidence/playwright-report \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -v "$EVIDENCE_DIR:/evidence" \
+            -w /work/qa/visual \
+            "$PLAYWRIGHT_IMAGE" \
+            bash -lc 'npm install --no-audit --no-fund --ignore-scripts && npx playwright test --config=playwright.config.mjs'
+
+      - name: Write immutable evidence metadata
+        if: always()
+        shell: bash
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -Eeuo pipefail
+
+          safe_base_url="${BASE_URL%%\?*}"
+          cat > "$EVIDENCE_DIR/run-metadata.json" <<EOF
+          {
+            "project": "$PROJECT_SLUG",
+            "repository": "$GITHUB_REPOSITORY",
+            "commit_sha": "$GITHUB_SHA",
+            "run_id": "$GITHUB_RUN_ID",
+            "run_attempt": "$GITHUB_RUN_ATTEMPT",
+            "target_environment": "$TARGET_ENVIRONMENT",
+            "base_url_without_query": "$safe_base_url",
+            "status": "$JOB_STATUS",
+            "recorded_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+          chmod -R go-rwx "$EVIDENCE_DIR" || true
+
+          {
+            echo "### Actual-User Visual Verification"
+            echo "- Project: $PROJECT_SLUG"
+            echo "- SHA: $GITHUB_SHA"
+            echo "- Environment: $TARGET_ENVIRONMENT"
+            echo "- Status: $JOB_STATUS"
+            echo "- Evidence path: $EVIDENCE_DIR"
+            echo "- Evidence includes screenshots, Chromium video, trace, HTML report, and diagnostics."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce local evidence retention
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          find "$EVIDENCE_ROOT" \
+            -mindepth 1 -maxdepth 1 -type d \
+            -mtime "+$RETENTION_DAYS" \
+            -exec rm -rf -- {} +
