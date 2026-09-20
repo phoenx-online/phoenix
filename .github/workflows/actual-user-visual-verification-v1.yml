@@ -81,6 +81,16 @@ jobs:
             exit 1
           fi
 
+          if [[ "$BASE_URL" == *"?"* || "$BASE_URL" == *"#"* || "$BASE_URL" == *\"* || "$BASE_URL" =~ [[:space:]] ]]; then
+            echo "BASE_URL must not contain query strings, fragments, quotes, or whitespace." >&2
+            exit 1
+          fi
+
+          if [ -n "${TARGET_RELEASE_ID:-}" ] && ! [[ "$TARGET_RELEASE_ID" =~ ^[A-Za-z0-9._:+@/-]+$ ]]; then
+            echo "target_release_id contains unsupported characters." >&2
+            exit 1
+          fi
+
           if [ "$TARGET_ENVIRONMENT" = "production" ] && [ "$ALLOW_PRODUCTION_READ_ONLY" != "true" ]; then
             echo "Production visual verification requires explicit read-only acknowledgement." >&2
             exit 1
@@ -137,7 +147,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/source:ro" \
             -v "$EVIDENCE_DIR:/evidence" \
             "$PLAYWRIGHT_IMAGE" \
-            bash -lc 'status=0; mkdir -p /evidence/work/qa-visual; cp -a /source/qa/visual/. /evidence/work/qa-visual/ || status=$?; if [ "$status" -eq 0 ]; then cd /evidence/work/qa-visual && npm install --no-audit --no-fund --ignore-scripts --package-lock=false && npx playwright test --config=playwright.config.mjs || status=$?; fi; chown -R "$HOST_UID:$HOST_GID" /evidence; exit "$status"'
+            bash -lc 'status=0; mkdir -p /evidence/work/qa-visual; cp -a /source/qa/visual/. /evidence/work/qa-visual/ || status=$?; if [ "$status" -eq 0 ]; then cd /evidence/work/qa-visual && npm install --no-audit --no-fund --ignore-scripts --package-lock=false && npx playwright test --config=playwright.config.mjs || status=$?; fi; rm -rf /evidence/work; chown -R "$HOST_UID:$HOST_GID" /evidence; exit "$status"'
 
       - name: Write immutable evidence metadata
         if: always()
@@ -159,7 +169,7 @@ jobs:
             "repository": "$GITHUB_REPOSITORY",
             "harness_sha": "$GITHUB_SHA",
             "target_release_id": "${TARGET_RELEASE_ID:-unknown}",
-            "release_qualified": "$([ -n "${TARGET_RELEASE_ID:-}" ] && printf true || printf false)",
+            "release_qualified": $([ -n "${TARGET_RELEASE_ID:-}" ] && printf true || printf false),
             "run_id": "$GITHUB_RUN_ID",
             "run_attempt": "$GITHUB_RUN_ATTEMPT",
             "target_environment": "$TARGET_ENVIRONMENT",
