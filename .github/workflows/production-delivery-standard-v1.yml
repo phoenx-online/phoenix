@@ -4,6 +4,12 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - 'AGENTS.md'
+      - 'config/production-delivery-standard.json'
+      - 'docs/PRODUCTION_DELIVERY_COMPLETION_STANDARD_V1.md'
+      - 'scripts/ci/validate-production-delivery-standard-v1.py'
+      - '.github/workflows/production-delivery-standard-v1.yml'
   workflow_dispatch:
 
 permissions:
