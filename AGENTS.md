@@ -39,3 +39,11 @@ The V1 product wedge is Live Selling Operations. Graph work should strengthen th
 ## Production rule
 
 No production deployment, production DNS activation, real-money workflow, or automatic deployment from `main` is authorized merely because a graph contract exists. Existing source-of-truth gates remain authoritative.
+
+## Production Delivery Completion Standard
+
+Before production-bound release work, read `docs/PRODUCTION_DELIVERY_COMPLETION_STANDARD_V1.md` and `config/production-delivery-standard.json`.
+
+A feature is not complete merely because code or CI is complete. Production-bound work closes only after the exact accepted release is safely promoted through existing project gates, verified in production, observable, recoverable, and evidenced.
+
+Use build-once/promote-the-same-artifact where an immutable artifact exists. Record exact source SHA and artifact digest when applicable. AI may diagnose or fix a failed gate but may never waive it. Convert recurring deployment failure classes into deterministic automation instead of normalizing repeated manual repair.
