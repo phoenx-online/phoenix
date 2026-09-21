@@ -4,7 +4,7 @@ import pathlib
 import sys
 
 CONFIG = pathlib.Path("config/production-delivery-standard.json")
-DOC = pathlib.Path("PRODUCTION_DELIVERY_COMPLETION_STANDARD_V1.md")
+DOC = pathlib.Path("docs/PRODUCTION_DELIVERY_COMPLETION_STANDARD_V1.md")
 AGENTS = pathlib.Path("AGENTS.md")
 
 required_gates = {
