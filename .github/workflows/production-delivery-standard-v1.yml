@@ -1,0 +1,66 @@
+name: Production Delivery Standard V1
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-delivery-standard-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  delivery-contract:
+    name: verify delivery completion contract
+    runs-on: [self-hosted, linux, x64, phoenix-dev]
+    timeout-minutes: 10
+    env:
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          clean: true
+
+      - name: Verify immutable source identity
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$CANDIDATE_SHA"
+          tree_sha="$(git rev-parse HEAD^{tree})"
+          config_sha256="$(sha256sum config/production-delivery-standard.json | awk '{print $1}')"
+          {
+            echo "CANDIDATE_SHA=$actual_sha"
+            echo "SOURCE_TREE_SHA=$tree_sha"
+            echo "DELIVERY_CONFIG_SHA256=$config_sha256"
+          } | tee "$RUNNER_TEMP/production-delivery-identity.txt"
+
+      - name: Validate production delivery contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/ci/validate-production-delivery-standard-v1.py | tee "$RUNNER_TEMP/production-delivery-contract.txt"
+
+      - name: Record fail-closed evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          grep -Fqx 'PRODUCTION_DELIVERY_STANDARD=PASS' "$RUNNER_TEMP/production-delivery-contract.txt"
+          grep -Fqx 'AI_GATE_WAIVER=DENIED' "$RUNNER_TEMP/production-delivery-contract.txt"
+          {
+            echo "### Production Delivery Standard V1"
+            echo
+            cat "$RUNNER_TEMP/production-delivery-identity.txt"
+            cat "$RUNNER_TEMP/production-delivery-contract.txt"
+            echo
+            echo "This gate is read-only. It does not deploy, merge, modify DNS, access production data, or waive project-specific approval gates."
+          } >> "$GITHUB_STEP_SUMMARY"
