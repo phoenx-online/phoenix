@@ -1,10 +1,39 @@
 name: phoenix-dev
 
 services:
+  init:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-lc"]
+    command: >-
+      "mkdir -p
+      /workspace/vendor
+      /workspace/storage/app/private
+      /workspace/storage/app/public
+      /workspace/storage/framework/cache/data
+      /workspace/storage/framework/sessions
+      /workspace/storage/framework/views
+      /workspace/storage/logs
+      /workspace/bootstrap/cache
+      && chown -R ${PHOENIX_UID:-1000}:${PHOENIX_GID:-1000}
+      /workspace/vendor
+      /workspace/storage
+      /workspace/bootstrap/cache"
+    volumes:
+      - vendor_data:/workspace/vendor
+      - storage_data:/workspace/storage
+      - bootstrap_cache_data:/workspace/bootstrap/cache
+    networks:
+      - phoenix_dev
+    restart: "no"
+
   app:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    user: "${PHOENIX_UID:-1000}:${PHOENIX_GID:-1000}"
     restart: unless-stopped
     working_dir: /workspace
     env_file:
@@ -15,13 +44,19 @@ services:
     volumes:
       - ./:/workspace
       - vendor_data:/workspace/vendor
+      - storage_data:/workspace/storage
+      - bootstrap_cache_data:/workspace/bootstrap/cache
     ports:
       - "127.0.0.1:${PHOENIX_HTTP_PORT:-18080}:8000"
     depends_on:
+      init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    mem_limit: 1536m
+    cpus: 1.25
     networks:
       - phoenix_dev
 
@@ -39,6 +74,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+    mem_limit: 1024m
+    cpus: 0.5
+    shm_size: 128m
     networks:
       - phoenix_dev
 
@@ -53,11 +91,15 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    mem_limit: 256m
+    cpus: 0.15
     networks:
       - phoenix_dev
 
 volumes:
   vendor_data:
+  storage_data:
+  bootstrap_cache_data:
   postgres_data:
   redis_data:
 
