@@ -13,6 +13,8 @@ command -v openssl >/dev/null 2>&1 || { echo "openssl is required" >&2; exit 1; 
 
 APP_KEY="base64:$(openssl rand -base64 32 | tr -d '\n')"
 DB_PASSWORD="$(openssl rand -hex 24)"
+PHOENIX_UID="$(id -u)"
+PHOENIX_GID="$(id -g)"
 
 cat >"$TARGET" <<EOF
 APP_NAME=PHOENIX
@@ -49,7 +51,10 @@ REDIS_QUEUE=phoenix-dev
 
 PHOENIX_HTTP_PORT=$HTTP_PORT
 PHOENIX_ENV_FILE=$TARGET
+PHOENIX_UID=$PHOENIX_UID
+PHOENIX_GID=$PHOENIX_GID
 EOF
 
 chmod 600 "$TARGET"
 echo "Created $TARGET with generated PHOENIX DEV-only secrets (mode 600)."
+echo "Runtime UID:GID = $PHOENIX_UID:$PHOENIX_GID"
