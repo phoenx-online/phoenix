@@ -165,3 +165,18 @@ Expected GREEN evidence:
 - DEV database backup/restore smoke test
 
 Only after all are GREEN should PHX-M1 be merged/closed and staging design begin.
+
+
+## First private startup result
+
+First private startup attempt on 2026-09-26 reached image build and service creation successfully, with Redis healthy, but PostgreSQL 18 remained unhealthy and therefore correctly prevented the application from starting.
+
+Root cause identified in the PHX-M1 Compose definition: PostgreSQL 18+ changed the official image data directory layout. PHX-M1 had mounted the persistent volume at the PostgreSQL 17-and-earlier location `/var/lib/postgresql/data`.
+
+Correction committed:
+
+- pin DEV PostgreSQL to `postgres:18.6`
+- mount `postgres_data` at `/var/lib/postgresql`
+- preserve the official PostgreSQL 18 internal `PGDATA=/var/lib/postgresql/18/docker` layout
+
+The failed PHOENIX DEV database volume contains no accepted application data and may be recreated during the controlled retry. This correction must not touch the independent iBayong PostgreSQL container or volume.
