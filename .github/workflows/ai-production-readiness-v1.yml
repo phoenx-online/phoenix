@@ -1,0 +1,112 @@
+name: AI Production Readiness V1
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-production-readiness-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shadow-readiness:
+    name: PHOENIX DEV shadow readiness
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, linux, x64, phoenix-dev]
+    timeout-minutes: 20
+    env:
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact SHA and comparison base
+        id: base
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [ "$(git rev-parse HEAD)" = "$CANDIDATE_SHA" ]
+          if [ -n "${BASE_SHA:-}" ]; then base="$BASE_SHA"; elif git rev-parse HEAD^ >/dev/null 2>&1; then base="$(git rev-parse HEAD^)"; else base="$CANDIDATE_SHA"; fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "candidate=$CANDIDATE_SHA base=$base runner=${RUNNER_NAME:-unknown}"
+
+      - name: Source hygiene
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git diff --check "${{ steps.base.outputs.base }}" "$CANDIDATE_SHA"
+
+      - name: Classify delivery risk
+        id: risk
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          changed="$(git diff --name-only "${{ steps.base.outputs.base }}" "$CANDIDATE_SHA")"
+          printf '%s\n' "$changed"
+          risk=LOW
+          reason='documentation or isolated presentation change'
+
+          if printf '%s\n' "$changed" | grep -Eq '^\.github/workflows/|(^|/)(database/migrations|migrations|production|deploy|secrets?|credentials?)(/|\.|$)|(^|/)\.env'; then
+            risk=CRITICAL
+            reason='workflow, migration, production, credential, or deployment boundary changed'
+          elif printf '%s\n' "$changed" | grep -Eq 'Dockerfile|docker-compose|composer\.(json|lock)$|(^|/)(app|config|database|routes|scripts?)(/|$)'; then
+            risk=HIGH
+            reason='application, runtime, dependency, database, or configuration behavior changed'
+          elif printf '%s\n' "$changed" | grep -Eq '\.(php|js|ts|tsx|jsx|sql|sh)$'; then
+            risk=MEDIUM
+            reason='executable application code changed'
+          fi
+
+          echo "risk=$risk" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Composer manifest
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if command -v composer >/dev/null 2>&1; then composer validate --no-check-publish --no-interaction; else echo 'composer unavailable; validation deferred'; fi
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if command -v php >/dev/null 2>&1; then
+            while IFS= read -r -d '' file; do php -l "$file" >/dev/null; done < <(find app config database routes tests -type f -name '*.php' -print0 2>/dev/null || true)
+          else
+            echo 'php unavailable; syntax lint deferred'
+          fi
+
+      - name: Shell syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          while IFS= read -r -d '' file; do bash -n "$file"; done < <(find . -type f -name '*.sh' -not -path './.git/*' -print0)
+
+      - name: Docker Compose sanity
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [ -f docker-compose.yml ] && command -v docker >/dev/null 2>&1; then docker compose config -q; fi
+
+      - name: Emit readiness evidence
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## PHOENIX — AI Production Readiness V1'
+            echo
+            echo "- Candidate: \`$CANDIDATE_SHA\`"
+            echo "- Base: \`${{ steps.base.outputs.base }}\`"
+            echo "- Runner: \`${RUNNER_NAME:-unknown}\`"
+            echo "- Risk: **${{ steps.risk.outputs.risk || 'UNRESOLVED' }}**"
+            echo "- Reason: ${{ steps.risk.outputs.reason || 'gate failed before classification' }}"
+            echo '- Environment scope: **DEV readiness only**'
+            echo '- Production deployment: **NOT AUTHORIZED**'
+          } >> "$GITHUB_STEP_SUMMARY"
