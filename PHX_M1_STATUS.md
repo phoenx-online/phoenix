@@ -1,6 +1,6 @@
 # PHX-M1 — Independent DEV Foundation
 
-Status: **IN PROGRESS — repository foundation prepared; fresh host evidence required before runtime start**
+Status: **IN PROGRESS — fresh host verification PASSED WITH REVIEW; private DEV startup is next**
 
 ## Objective
 
@@ -38,16 +38,34 @@ This evidence is useful baseline context but does **not** replace a fresh read-o
 
 ## Fresh host gate
 
-Run from the intended host:
+**COMPLETED 2026-09-26 18:22 +08:00 — PASS_WITH_REVIEW.**
 
-```bash
-cd /home/phoenix/projects/phoenix
-bash scripts/verify-dev-host.sh
-```
+Verified live on `craniumtek-lab-01` as the `phoenix` user:
 
-The verifier is read-only. It records current hostname, OS, CPU, RAM/swap, free disk, Docker/Compose access, containers, listening ports, account boundaries, runner processes, backup signals, and best-effort SMART health.
+- Ubuntu 26.04.1 LTS, kernel 7.0.0-31-generic
+- 2 x86_64 CPU cores, AMD A4-6300
+- 6.4 GiB RAM with 3.9 GiB available at verification
+- 4.0 GiB swap with only 150 MiB in use
+- root filesystem 458 GiB total, 386 GiB free (12% used)
+- Docker 29.1.3
+- Docker Compose 2.40.3
+- `phoenix` can access Docker
+- existing iBayong DEV PostgreSQL container healthy on loopback `127.0.0.1:55432`
+- no collision on PHOENIX planned loopback port `18080`
+- `phoenix` Linux account exists and belongs to the Docker group
+- `/home/phoenix/projects` exists
+- `/home/phoenix/private` exists with mode 700
+- one iBayong self-hosted runner was active under `ibayong-runner`
+- critical failures: **0**
+- warnings: **3**
 
-PHOENIX runtime startup remains blocked if the verifier reports any critical failure.
+Warnings reviewed:
+
+1. `/home/ibayong/projects` missing — informational for PHOENIX; do not create or alter iBayong paths.
+2. `/home/ibayong/private` missing — informational for PHOENIX; do not create or alter iBayong paths.
+3. SMART query denied to unprivileged `phoenix` user — expected privilege limitation; older-disk risk remains documented and the DEV host must not be the sole backup location.
+
+Result: PHOENIX may proceed to a private, resource-capped DEV startup. Heavy builds remain serialized because this host has only two CPU cores.
 
 ## Repository modernization completed on PHX-M1 branch
 
@@ -67,6 +85,9 @@ Prepared on `phx-m1-dev-foundation`:
 - `compose.dev.yml` with project-scoped services and no public database/Redis ports
 - app HTTP bound to loopback only (`127.0.0.1`)
 - generated DEV-only secrets helper
+- non-root application runtime using the host PHOENIX UID/GID
+- DEV resource caps for app/PostgreSQL/Redis
+- named runtime volumes for vendor/storage/bootstrap cache
 - DEV up/down/health scripts
 - manual-only self-hosted CI workflow using `phoenix-dev` runner label
 
@@ -111,7 +132,7 @@ Runner registration also requires a short-lived GitHub registration token that i
 
 ## Private DEV startup gate
 
-After fresh host verification is GREEN and repository/runner exposure is resolved:
+Fresh host verification is GREEN. Repository visibility blocks **runner registration**, but it does not block a manual private DEV startup because the application binds loopback only. Proceed with:
 
 ```bash
 cd /home/phoenix/projects/phoenix
@@ -136,7 +157,6 @@ Expected GREEN evidence:
 
 ## Remaining PHX-M1 gates
 
-- fresh `craniumtek-lab-01` verification output
 - branch runtime build/test on the real host
 - repository visibility decision before self-hosted runner registration
 - PHOENIX-only runner registration as non-root user
