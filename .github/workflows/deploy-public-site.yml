@@ -19,8 +19,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: production
-
     steps:
       - name: Checkout exact release source
         uses: actions/checkout@v4
