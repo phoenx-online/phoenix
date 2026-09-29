@@ -1,10 +1,11 @@
-name: PHOENIX Public Site Deploy
+name: PHOENIX Existing Server Production
 
 on:
   push:
     branches: [main]
     paths:
       - "public-site/**"
+      - "scripts/deploy-public-prod.sh"
       - ".github/workflows/deploy-public-site.yml"
   workflow_dispatch:
 
@@ -12,84 +13,51 @@ permissions:
   contents: read
 
 concurrency:
-  group: phoenix-public-production
+  group: phoenix-production
   cancel-in-progress: false
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, phoenix-prod]
     timeout-minutes: 15
+
     steps:
+      - name: Verify PHOENIX production boundary
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$RUNNER_NAME" = "craniumtek-phoenix-prod"
+          test "$(whoami)" = "phoenix-prod"
+          test "$(hostname)" = "craniumtek"
+          id -nG | tr ' ' '\n' | grep -qx docker
+          test -d /srv/phoenix
+          test -w /srv/phoenix
+          echo "PHOENIX_PRODUCTION_BOUNDARY=PASS"
+
       - name: Checkout exact release source
         uses: actions/checkout@v4
 
-      - name: Validate static release
-        run: |
-          set -Eeuo pipefail
-          test -s public-site/index.html
-          grep -q "Live Commerce Growth Operating System" public-site/index.html
-          printf 'release_sha=%s\n' "$GITHUB_SHA"
-
-      - name: Load production SSH key
-        uses: webfactory/ssh-agent@v0.9.1
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
-
-      - name: Trust configured production host
+      - name: Deploy immutable static release
+        shell: bash
         env:
-          DEPLOY_HOST: ${{ secrets.DROPLET_IP }}
+          PHOENIX_PROD_ROOT: /srv/phoenix
+          PHOENIX_PROD_PORT: "8096"
+        run: bash scripts/deploy-public-prod.sh "$GITHUB_SHA"
+
+      - name: Verify local production listener
+        shell: bash
         run: |
           set -Eeuo pipefail
-          test -n "$DEPLOY_HOST"
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-
-      - name: Deploy public landing page
-        env:
-          DEPLOY_HOST: ${{ secrets.DROPLET_IP }}
-        run: |
-          set -Eeuo pipefail
-          scp public-site/index.html root@"$DEPLOY_HOST":/tmp/phoenx-index.html
-
-          ssh root@"$DEPLOY_HOST" 'bash -se' <<'REMOTE'
-          set -Eeuo pipefail
-
-          install -d -m 755 /var/www/phoenix/public
-          install -m 644 /tmp/phoenx-index.html /var/www/phoenix/public/index.html
-          rm -f /tmp/phoenx-index.html
-
-          if id www-data >/dev/null 2>&1; then
-            chown -R www-data:www-data /var/www/phoenix/public
-          fi
-
-          if command -v nginx >/dev/null 2>&1; then
-            if ! grep -RqsE 'server_name[[:space:]]+.*phoenx\.online' /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null; then
-              cat >/etc/nginx/conf.d/phoenx.online.conf <<'NGINX'
-          server {
-              listen 80;
-              server_name phoenx.online www.phoenx.online;
-              root /var/www/phoenix/public;
-              index index.html;
-              location / {
-                  try_files $uri $uri/ /index.html;
-              }
-              add_header X-Content-Type-Options "nosniff" always;
-              add_header X-Frame-Options "SAMEORIGIN" always;
-          }
-          NGINX
-            fi
-
-            nginx -t
-            systemctl reload nginx
-          fi
-
-          curl --fail --silent --show-error -H 'Host: phoenx.online' http://127.0.0.1/ >/dev/null
-          REMOTE
+          test "$(curl --fail --silent --show-error -o /tmp/phx-local.html -w '%{http_code}' http://127.0.0.1:8096/)" = "200"
+          grep -q "Live Commerce Growth Operating System" /tmp/phx-local.html
+          rm -f /tmp/phx-local.html
+          echo "PHOENIX_LOCAL_ACCEPTANCE=PASS"
 
       - name: Verify public domain
+        shell: bash
         run: |
           set -Eeuo pipefail
-          curl --fail --location --retry 6 --retry-delay 5 --retry-all-errors             --max-time 20 https://phoenx.online/ >/tmp/phoenx-live.html
-          grep -q "Live Commerce Growth Operating System" /tmp/phoenx-live.html
+          curl --fail --location --retry 6 --retry-delay 5 --retry-all-errors --max-time 20             https://phoenx.online/ >/tmp/phx-public.html
+          grep -q "Live Commerce Growth Operating System" /tmp/phx-public.html
+          rm -f /tmp/phx-public.html
+          echo "PHOENIX_PUBLIC_ACCEPTANCE=PASS"
