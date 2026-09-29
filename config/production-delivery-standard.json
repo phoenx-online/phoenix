@@ -1,0 +1,25 @@
+{
+  "standard": "production-delivery-completion-v1",
+  "effective_date_pht": "2026-09-22",
+  "definition_of_done": "production_verified_observable_recoverable",
+  "build_once_promote_same_artifact": true,
+  "release_identity": [
+    "source_commit_sha",
+    "artifact_digest_when_applicable"
+  ],
+  "required_gates": [
+    "canonical_source_preflight",
+    "affected_module_tests",
+    "synthetic_or_user_facing_acceptance",
+    "staging_or_project_equivalent_qualification",
+    "rollback_or_forward_repair_readiness",
+    "production_authority_gate",
+    "post_deploy_smoke_or_health_verification",
+    "observability_check",
+    "release_evidence"
+  ],
+  "ai_may_waive_failed_gate": false,
+  "repeated_failure_policy": "convert_recurring_failure_class_into_deterministic_automation",
+  "close_rule": "production_bound_work_closes_only_after_verified_production_release",
+  "project_specific_rules_remain_authoritative": true
+}
