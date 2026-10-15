@@ -1,0 +1,21 @@
+name: PHOENIX Domain Diagnostic Source Gate
+
+on:
+  pull_request:
+    paths:
+      - 'deploy/diagnose-domain-integrity-readonly.sh'
+      - 'tests/test-domain-integrity-readonly.sh'
+      - '.github/workflows/domain-integrity-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readonly-source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify read-only diagnostic contract
+        run: bash tests/test-domain-integrity-readonly.sh
