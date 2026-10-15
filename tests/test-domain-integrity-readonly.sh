@@ -46,8 +46,11 @@ for marker in "${forbidden[@]}"; do
   fi
 done
 
-if grep -Eq '(^|[^>])>>|>[^&]' "$SCRIPT"; then
-  printf 'unexpected filesystem redirection found\n' >&2
+# Ignore the only approved output suppression target and shell here-strings,
+# then reject any remaining stdout append or file-output redirection.
+NORMALIZED="$(sed -E 's/[0-9]*>\/dev\/null//g; s/<<<.*$//g' "$SCRIPT")"
+if grep -Eq '(^|[^>])>>|(^|[^<>])>[[:space:]]*[^&]' <<<"$NORMALIZED"; then
+  printf 'unexpected filesystem output redirection found\n' >&2
   exit 1
 fi
 
