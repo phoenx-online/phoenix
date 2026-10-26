@@ -1,0 +1,103 @@
+name: PHOENIX PR source contract gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phoenix-pr-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-contract:
+    name: Source contract (not a release gate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact candidate head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Prove exact candidate-head identity
+        shell: bash
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          ACTUAL_HEAD_SHA="$(git rev-parse HEAD)"
+          test "$ACTUAL_HEAD_SHA" = "$EXPECTED_HEAD_SHA"
+          echo "EXPECTED_HEAD_SHA=$EXPECTED_HEAD_SHA"
+          echo "ACTUAL_HEAD_SHA=$ACTUAL_HEAD_SHA"
+
+      - name: Validate Composer manifest and PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r '
+            $manifest = json_decode(file_get_contents("composer.json"), true, 512, JSON_THROW_ON_ERROR);
+            foreach (["php", "laravel/framework"] as $dependency) {
+                if (!isset($manifest["require"][$dependency])) {
+                    fwrite(STDERR, "Missing Composer requirement: {$dependency}\n");
+                    exit(1);
+                }
+            }
+            if (!isset($manifest["require-dev"]["phpunit/phpunit"])) {
+                fwrite(STDERR, "Missing PHPUnit development requirement\n");
+                exit(1);
+            }
+          '
+          find app bootstrap config routes tests -type f -name '*.php' -print0 |
+            xargs -0 -n1 php -l
+
+      - name: Verify visual-first and readiness contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r '
+            $home = file_get_contents("resources/views/welcome.blade.php");
+            foreach ([
+                "PHOENIX",
+                "Live Commerce Growth Operating System",
+                "Product foundation preview",
+                "Live Selling Operations",
+                "Planned capability",
+                "Show what exists. Label what does not."
+            ] as $required) {
+                if (strpos($home, $required) === false) {
+                    fwrite(STDERR, "Homepage contract missing: {$required}\n");
+                    exit(1);
+                }
+            }
+            if (strpos($home, "Phoenix Creator Team") !== false) {
+                fwrite(STDERR, "Obsolete homepage identity remains\n");
+                exit(1);
+            }
+
+            $contract = file_get_contents("docs/PHX_P0_RUN_SHEET_ACCEPTANCE.md");
+            foreach (["DRAFT", "READY", "LIVE", "COMPLETED", "REVIEWED", "CANCELLED"] as $state) {
+                if (stripos($contract, $state) === false) {
+                    fwrite(STDERR, "Run-sheet state missing: {$state}\n");
+                    exit(1);
+                }
+            }
+            foreach (["UNKNOWN", "tenant", "store", "authenticated", "audit", "idempot", "Issue #99", "PHOENIX"] as $guard) {
+                if (stripos($contract, $guard) === false) {
+                    fwrite(STDERR, "Run-sheet guard missing: {$guard}\n");
+                    exit(1);
+                }
+            }
+          '
+
+      - name: Declare controlled limitation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f composer.lock; then
+            echo "composer.lock present; full PHPUnit remains a separate qualified job."
+          else
+            echo "::notice::composer.lock is absent. This deterministic source-contract gate does not claim dependency-resolved PHPUnit, staging, release, or production acceptance."
+          fi
