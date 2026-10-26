@@ -17,15 +17,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout exact candidate
+      - name: Checkout exact candidate head
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      - name: Record exact source identity
+      - name: Prove exact candidate-head identity
         shell: bash
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
-          git rev-parse HEAD
+          ACTUAL_HEAD_SHA="$(git rev-parse HEAD)"
+          test "$ACTUAL_HEAD_SHA" = "$EXPECTED_HEAD_SHA"
+          echo "EXPECTED_HEAD_SHA=$EXPECTED_HEAD_SHA"
+          echo "ACTUAL_HEAD_SHA=$ACTUAL_HEAD_SHA"
 
       - name: Validate Composer manifest and PHP syntax
         shell: bash
