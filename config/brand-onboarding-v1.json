@@ -1,0 +1,694 @@
+{
+  "schema_version": "1.0.0",
+  "status": "foundation_contract_not_live",
+  "product": "PHOENIX",
+  "entry": "Brand Portal > Onboarding",
+  "jurisdictions": [
+    "PH"
+  ],
+  "services": [
+    "store_marketplace",
+    "creators_affiliates",
+    "content_creative",
+    "performance_ads",
+    "live_selling",
+    "analytics_finance"
+  ],
+  "rules": {
+    "tenancy": "organization_uuid",
+    "immutable_submitted_snapshot": true,
+    "question_revisions_versioned": true,
+    "save_draft": true,
+    "staff_review_required": true,
+    "activate_only_after_scope_and_compliance_approval": true,
+    "no_platform_passwords_or_one_time_codes": true,
+    "no_plaintext_credentials": true,
+    "private_document_storage": true,
+    "document_upload_allowed_mime": [
+      "application/pdf",
+      "image/png",
+      "image/jpeg",
+      "text/csv",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    ],
+    "max_document_bytes": 20971520,
+    "document_statuses": [
+      "quarantined",
+      "scanning",
+      "ready_for_review",
+      "approved",
+      "rejected",
+      "expired"
+    ],
+    "onboarding_statuses": [
+      "draft",
+      "submitted",
+      "needs_information",
+      "under_review",
+      "approved",
+      "rejected",
+      "activated"
+    ],
+    "privileged_actions_human_approved": [
+      "restricted_product_claims",
+      "budget_commitment",
+      "shop_permissions",
+      "payments",
+      "settlements",
+      "brand_activation"
+    ]
+  },
+  "steps": [
+    {
+      "key": "business",
+      "title": "Company and authorized contacts",
+      "questions": [
+        {
+          "key": "legal_name",
+          "label": "Registered legal business name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "trading_name",
+          "label": "Trade name (if different)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "business_type",
+          "label": "Registration type",
+          "type": "select",
+          "required": true,
+          "options": [
+            "corporation",
+            "sole_proprietorship",
+            "partnership",
+            "cooperative",
+            "other"
+          ]
+        },
+        {
+          "key": "registration_country",
+          "label": "Registration country",
+          "type": "text",
+          "required": true,
+          "default": "Philippines"
+        },
+        {
+          "key": "registration_number",
+          "label": "SEC/DTI/CDA registration reference (where applicable)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "registered_address",
+          "label": "Registered business address",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "contact_name",
+          "label": "Primary authorized contact",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "contact_email",
+          "label": "Primary contact email",
+          "type": "email",
+          "required": true
+        },
+        {
+          "key": "contact_phone",
+          "label": "Primary contact mobile number",
+          "type": "tel",
+          "required": true
+        },
+        {
+          "key": "contact_role",
+          "label": "Contact's position / authority",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "billing_email",
+          "label": "Billing contact email",
+          "type": "email",
+          "required": false
+        },
+        {
+          "key": "company_website",
+          "label": "Company website",
+          "type": "url",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "brand_products",
+      "title": "Brand and product information",
+      "questions": [
+        {
+          "key": "brand_name",
+          "label": "Brand name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "brand_description",
+          "label": "What does your brand sell?",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "product_categories",
+          "label": "Product categories",
+          "type": "multiselect",
+          "required": true,
+          "options": [
+            "beauty_personal_care",
+            "health_wellness",
+            "food_beverage",
+            "fashion",
+            "home",
+            "electronics",
+            "other"
+          ]
+        },
+        {
+          "key": "regulated_products",
+          "label": "Do any products require regulatory approvals or special advertising restrictions?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "regulatory_agency",
+          "label": "Applicable regulator(s), if known",
+          "type": "text",
+          "required": false,
+          "when": {
+            "field": "regulated_products",
+            "equals": true
+          }
+        },
+        {
+          "key": "sku_count",
+          "label": "Approximate number of SKUs",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "hero_skus",
+          "label": "Top products for launch",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "selling_prices",
+          "label": "Current suggested retail prices and authorized discounts",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "approved_product_claims",
+          "label": "Approved product claims, disclaimers and forbidden claims",
+          "type": "textarea",
+          "required": {},
+          "when": {
+            "field": "regulated_products",
+            "equals": true
+          }
+        },
+        {
+          "key": "brand_socials",
+          "label": "Official brand social media profiles",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "marketplaces",
+      "title": "Stores and marketplaces",
+      "questions": [
+        {
+          "key": "sales_channels",
+          "label": "Where do you currently sell?",
+          "type": "multiselect",
+          "required": true,
+          "options": [
+            "tiktok",
+            "shopee",
+            "lazada",
+            "facebook",
+            "website",
+            "offline",
+            "none"
+          ]
+        },
+        {
+          "key": "store_setup_needed",
+          "label": "Do you need PHOENIX to assist with store setup?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "store_links",
+          "label": "Existing shop URLs and seller IDs (not passwords)",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "official_access_contact",
+          "label": "Who is authorized to send PHOENIX official staff invitations?",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "account_health",
+          "label": "Any shop restrictions, violations or unresolved issues?",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "listing_responsibility",
+          "label": "Who approves listings, price changes and promotions?",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "inventory",
+      "title": "Inventory, fulfillment and city distributors",
+      "questions": [
+        {
+          "key": "inventory_ownership",
+          "label": "Who owns stock for orders PHOENIX will manage?",
+          "type": "select",
+          "required": true,
+          "options": [
+            "brand",
+            "city_distributors",
+            "mixed",
+            "consignment",
+            "other"
+          ]
+        },
+        {
+          "key": "stock_locations",
+          "label": "Warehouse/store locations and city coverage",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "erp_system",
+          "label": "Inventory, POS or ERP system in use",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "packing_shipper",
+          "label": "Who packs, dispatches and manages returns?",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "courier_sla",
+          "label": "Courier options, cutoff times and SLA",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "regional_distributors",
+          "label": "Are there independently stocked city distributors?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "territory_rules",
+          "label": "Territory, channel, pricing and customer allocation rules",
+          "type": "textarea",
+          "required": false,
+          "when": {
+            "field": "regional_distributors",
+            "equals": true
+          }
+        },
+        {
+          "key": "distributor_order_routing",
+          "label": "How should online orders be routed or credited?",
+          "type": "textarea",
+          "required": false,
+          "when": {
+            "field": "regional_distributors",
+            "equals": true
+          }
+        },
+        {
+          "key": "returns_policy",
+          "label": "Refunds, returns, damaged items and escalation policy",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "reorder_threshold",
+          "label": "Low stock and sample replenishment rules",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "live_creators",
+      "title": "Live selling and affiliate operations",
+      "when": {
+        "any_services": [
+          "creators_affiliates",
+          "live_selling"
+        ]
+      },
+      "questions": [
+        {
+          "key": "live_goals",
+          "label": "What outcomes are expected from live selling?",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "live_hours",
+          "label": "Preferred live days, times and hours",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "studio_setup",
+          "label": "Existing studio/equipment and locations",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "host_approval",
+          "label": "Who approves hosts, scripts and promotions?",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "sample_inventory",
+          "label": "Product sample quantities and approval workflow",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "affiliate_policy",
+          "label": "Affiliate commissions, recruiting rules and approved creators",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "moderation_escalation",
+          "label": "Customer messaging, live moderation and escalation rules",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "content_ads",
+      "title": "Content, creative and advertising",
+      "when": {
+        "any_services": [
+          "content_creative",
+          "performance_ads"
+        ]
+      },
+      "questions": [
+        {
+          "key": "target_audience",
+          "label": "Core customer segments and markets",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "brand_voice",
+          "label": "Tone, brand do's and don'ts, and reference creators",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "asset_library",
+          "label": "Existing creative library link (never publicize private access)",
+          "type": "url",
+          "required": false
+        },
+        {
+          "key": "approval_sla",
+          "label": "Who approves creatives and what is the review turnaround?",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "ad_platforms",
+          "label": "Advertising platforms in scope",
+          "type": "multiselect",
+          "required": false,
+          "options": [
+            "meta",
+            "tiktok",
+            "google",
+            "other"
+          ],
+          "when": {
+            "any_services": [
+              "performance_ads"
+            ]
+          }
+        },
+        {
+          "key": "monthly_ad_budget_php",
+          "label": "Indicative monthly advertising budget in PHP",
+          "type": "number",
+          "required": false,
+          "when": {
+            "any_services": [
+              "performance_ads"
+            ]
+          }
+        },
+        {
+          "key": "spend_approver",
+          "label": "Name/role authorized to approve spend and budget changes",
+          "type": "text",
+          "required": false,
+          "when": {
+            "any_services": [
+              "performance_ads"
+            ]
+          }
+        },
+        {
+          "key": "previous_ad_metrics",
+          "label": "Historical ROAS, CPA/CPO, GMV, top campaigns if available",
+          "type": "textarea",
+          "required": false,
+          "when": {
+            "any_services": [
+              "performance_ads"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "scope_reporting",
+      "title": "Services, goals and responsibilities",
+      "questions": [
+        {
+          "key": "selected_services",
+          "label": "Which PHOENIX services are requested?",
+          "type": "multiselect",
+          "required": true,
+          "options": [
+            "store_marketplace",
+            "creators_affiliates",
+            "content_creative",
+            "performance_ads",
+            "live_selling",
+            "analytics_finance"
+          ]
+        },
+        {
+          "key": "target_monthly_gmv_php",
+          "label": "Target monthly gross merchandise value (PHP)",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "success_metrics",
+          "label": "How should success be measured?",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "start_date",
+          "label": "Target kickoff date",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "key_contacts",
+          "label": "Escalation contacts for account, logistics, marketing, billing",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "reporting_frequency",
+          "label": "Preferred reporting cadence",
+          "type": "select",
+          "required": true,
+          "options": [
+            "daily",
+            "weekly",
+            "monthly"
+          ]
+        },
+        {
+          "key": "commercial_agreement",
+          "label": "Do you already have a signed PHOENIX service agreement?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "extra_requirements",
+          "label": "Other requirements or constraints",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "final_review",
+      "title": "Documents and final approval",
+      "questions": [
+        {
+          "key": "truthfulness_attestation",
+          "label": "I confirm I am authorized to submit accurate information for this brand.",
+          "type": "checkbox",
+          "required": true
+        },
+        {
+          "key": "privacy_notice_ack",
+          "label": "I acknowledge the PHOENIX privacy notice and specified processing purposes.",
+          "type": "checkbox",
+          "required": true
+        },
+        {
+          "key": "operating_authorization",
+          "label": "I authorize PHOENIX to perform only services and actions explicitly approved in our agreement.",
+          "type": "checkbox",
+          "required": true
+        },
+        {
+          "key": "critical_approvals_contact",
+          "label": "Who signs off on restricted claims, spend and irreversible decisions?",
+          "type": "textarea",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "document_types": [
+    {
+      "key": "business_registration",
+      "title": "Business registration evidence",
+      "purpose": "Verify legal entity and contracting authority",
+      "required_when": "always",
+      "regulatory": false
+    },
+    {
+      "key": "tax_registration",
+      "title": "Tax registration / billing document",
+      "purpose": "Verify billing and invoicing information",
+      "required_when": "billing_required",
+      "regulatory": false
+    },
+    {
+      "key": "brand_authorization",
+      "title": "Brand ownership or authorization",
+      "purpose": "Establish authority to sell and advertise a brand",
+      "required_when": "when_not_brand_owner",
+      "regulatory": false
+    },
+    {
+      "key": "authorized_signatory",
+      "title": "Authority of representative / resolution",
+      "purpose": "Verify authority to approve terms",
+      "required_when": "when_authority_unclear",
+      "regulatory": false
+    },
+    {
+      "key": "service_agreement",
+      "title": "Executed PHOENIX services agreement",
+      "purpose": "Define scope, authority and commercial obligations",
+      "required_when": "always",
+      "regulatory": false
+    },
+    {
+      "key": "product_catalog",
+      "title": "Product catalog / SKU master",
+      "purpose": "Create accurate product listings",
+      "required_when": "always",
+      "regulatory": false
+    },
+    {
+      "key": "approved_packaging_labels",
+      "title": "Packaging labels and required warnings",
+      "purpose": "Verify approved listing and live content",
+      "required_when": "regulated_products",
+      "regulatory": true
+    },
+    {
+      "key": "regulatory_product_docs",
+      "title": "Applicable product registrations / approvals",
+      "purpose": "Manual category-specific compliance review",
+      "required_when": "regulated_products",
+      "regulatory": true
+    },
+    {
+      "key": "approved_claims",
+      "title": "Approved product-claims matrix",
+      "purpose": "Prevent unsupported live/video/ad claims",
+      "required_when": "regulated_products",
+      "regulatory": true
+    },
+    {
+      "key": "brand_guidelines",
+      "title": "Logos, approved content and brand guidelines",
+      "purpose": "Create accurate brand-aligned media",
+      "required_when": "content_or_live",
+      "regulatory": false
+    },
+    {
+      "key": "inventory_fulfillment_rules",
+      "title": "Inventory ownership, fulfillment and returns SOP",
+      "purpose": "Operate orders and stock accurately",
+      "required_when": "always",
+      "regulatory": false
+    },
+    {
+      "key": "distributor_policy",
+      "title": "City distributor, territory and pricing policy",
+      "purpose": "Prevent channel conflict and protect owned city stock",
+      "required_when": "regional_distributors",
+      "regulatory": false
+    },
+    {
+      "key": "advertising_authorization",
+      "title": "Paid media spend approval / limits",
+      "purpose": "Protect approved ad budgets",
+      "required_when": "performance_ads",
+      "regulatory": false
+    }
+  ]
+}
