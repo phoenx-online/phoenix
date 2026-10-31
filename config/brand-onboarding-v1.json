@@ -56,7 +56,8 @@
       "payments",
       "settlements",
       "brand_activation"
-    ]
+    ],
+    "service_selection_prompt_visible_from_start": true
   },
   "steps": [
     {
@@ -214,7 +215,7 @@
           "key": "approved_product_claims",
           "label": "Approved product claims, disclaimers and forbidden claims",
           "type": "textarea",
-          "required": {},
+          "required": false,
           "when": {
             "field": "regulated_products",
             "equals": true
