@@ -11,9 +11,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/healthz',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // PHX-M1: keep the initial DEV baseline minimal and explicit.
+        $middleware->redirectGuestsTo(fn () => route('careers.login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // PHX-M1: default Laravel exception handling for DEV baseline.
+        // PHOENIX defaults; never disclose detailed exception traces in production.
     })
     ->create();

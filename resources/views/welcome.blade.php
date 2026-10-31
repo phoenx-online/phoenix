@@ -75,6 +75,7 @@
 <div class="shell">
     <header>
         <strong>PHOENIX</strong>
+        <a href="{{ route('careers.index') }}" aria-label="PHOENIX Careers">Careers</a>
         <span class="status"><span class="dot" aria-hidden="true"></span>Product foundation preview</span>
     </header>
 
