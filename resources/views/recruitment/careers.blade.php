@@ -1,5 +1,6 @@
 @extends('recruitment.layout')
 @section('title', 'Join our team')
+@section('robots', 'index,follow')
 @section('content')
 <p class="eyebrow">Careers · Ortigas</p>
 <h1>Build content that sells.</h1>
