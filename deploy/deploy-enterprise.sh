@@ -29,5 +29,5 @@ cp deploy/nginx_phoenix.conf /etc/nginx/conf.d/phoenix.conf
 nginx -t && systemctl restart nginx
 
 # SSL (requires domain pointed to server)
-# certbot --nginx -d phoenx.online -d www.phoenx.online --non-interactive --agree-tos -m admin@phoenx.online
+# certbot --nginx -d phoenx.live -d www.phoenx.live --non-interactive --agree-tos -m admin@phoenx.live
 echo "Deployment script finished."

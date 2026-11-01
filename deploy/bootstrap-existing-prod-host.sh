@@ -105,7 +105,7 @@ import sys
 path = Path(sys.argv[1])
 text = path.read_text()
 
-if "hostname: phoenx.online" in text or "hostname: www.phoenx.online" in text:
+if "hostname: phoenx.live" in text or "hostname: www.phoenx.live" in text:
     print("PHOENIX tunnel hostname already present; leaving config unchanged")
     raise SystemExit(0)
 
@@ -114,9 +114,9 @@ if marker not in text:
     raise SystemExit("ERROR: Cloudflare fallback rule not found; refusing automatic edit")
 
 insert = (
-    "  - hostname: phoenx.online\n"
+    "  - hostname: phoenx.live\n"
     "    service: http://localhost:8096\n"
-    "  - hostname: www.phoenx.online\n"
+    "  - hostname: www.phoenx.live\n"
     "    service: http://localhost:8096\n"
 )
 path.write_text(text.replace(marker, insert + marker, 1))
@@ -141,7 +141,7 @@ rm -f /tmp/phx-local
 echo "LOCAL_HTTP=$LOCAL"
 
 set +e
-PUBLIC="$(curl --silent --show-error --location --connect-timeout 5 --max-time 20 -o /tmp/phx-public -w '%{http_code}' https://phoenx.online/)"
+PUBLIC="$(curl --silent --show-error --location --connect-timeout 5 --max-time 20 -o /tmp/phx-public -w '%{http_code}' https://phoenx.live/)"
 CURL_RC=$?
 set -e
 
@@ -155,5 +155,5 @@ rm -f /tmp/phx-public
 echo "PHOENIX_LOCAL_ACCEPTANCE=PASS"
 echo "PHOENIX_PUBLIC_ACCEPTANCE=BLOCKED"
 echo "PUBLIC_HTTP=${PUBLIC:-000}"
-echo "The local production service is live. If the public domain is still blocked, update the Cloudflare DNS record for phoenx.online/www to the existing tunnel, then re-test."
+echo "The local production service is live. If the public domain is still blocked, update the Cloudflare DNS record for phoenx.live/www to the existing tunnel, then re-test."
 exit 7

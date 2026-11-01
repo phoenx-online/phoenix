@@ -1,12 +1,7 @@
 name: PHOENIX Existing Server Production
 
+# Production deployment requires explicit operator invocation after DNS/TLS cutover checks.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "public-site/**"
-      - "scripts/deploy-public-prod.sh"
-      - ".github/workflows/deploy-public-site.yml"
   workflow_dispatch:
 
 permissions:
@@ -57,7 +52,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          curl --fail --location --retry 6 --retry-delay 5 --retry-all-errors --max-time 20             https://phoenx.online/ >/tmp/phx-public.html
+          curl --fail --location --retry 6 --retry-delay 5 --retry-all-errors --max-time 20             https://phoenx.live/ >/tmp/phx-public.html
           grep -q "Live Commerce Growth Operating System" /tmp/phx-public.html
           rm -f /tmp/phx-public.html
           echo "PHOENIX_PUBLIC_ACCEPTANCE=PASS"

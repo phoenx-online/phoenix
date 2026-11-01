@@ -11,8 +11,14 @@ Canonical target:
 - Docker project: `phoenix-prod`
 - container: `phoenix-prod-web`
 - local listener: `127.0.0.1:8096`
-- public domains: `phoenx.online`, `www.phoenx.online`
+- public domains: `phoenx.live`, `www.phoenx.live`
 - source repository: `phoenx-online/phoenix`
+
+## Domain cutover safety gate
+
+This runbook targets **phoenx.live**, but no new public DNS or tunnel route should be activated without first verifying ownership of the old hostname, the currently observed A.I.D.A login, and any mail/auth dependencies. See `docs/domain-migration-2026-11-01.md`.
+
+The exact active tunnel, DNS provider, PHOENIX production container, runner state, and rollback plan must be verified on the host before changing routes. Do not remove a previously existing hostname until dependency checks pass.
 
 ## Why this replaces the DigitalOcean workflow
 
@@ -62,9 +68,9 @@ Install/start the runner service as `phoenix-prod`, never as root.
 Add these ingress routes to the existing production tunnel, preserving all current Craniumtek/MBG/Cranium AI/FlashDate routes:
 
 ```yaml
-- hostname: phoenx.online
+- hostname: phoenx.live
   service: http://localhost:8096
-- hostname: www.phoenx.online
+- hostname: www.phoenx.live
   service: http://localhost:8096
 ```
 
@@ -85,5 +91,5 @@ Production is GREEN only when all are true:
 2. exact release SHA is recorded at `/srv/phoenix/RELEASE_SHA`;
 3. `phoenix-prod-web` is healthy enough to return the PHOENIX landing page locally;
 4. `127.0.0.1:8096` returns HTTP 200;
-5. `https://phoenx.online/` returns HTTP 200 and contains “Live Commerce Growth Operating System”;
+5. `https://phoenx.live/` returns HTTP 200 and contains “Live Commerce Growth Operating System”;
 6. no MBG, Craniumtek, FlashDate, iBayong, or DEV/STAGING path is modified.
