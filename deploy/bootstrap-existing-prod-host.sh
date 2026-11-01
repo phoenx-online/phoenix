@@ -70,7 +70,7 @@ services:
     ports:
       - "127.0.0.1:${PORT}:80"
     volumes:
-      - "$ROOT/current:/usr/share/nginx/html:ro"
+      - "$REL:/usr/share/nginx/html:ro"
     read_only: true
     tmpfs:
       - /var/cache/nginx
@@ -94,42 +94,14 @@ done
 grep -q "Live Commerce Growth Operating System" "$ROOT/.local-health"
 rm -f "$ROOT/.local-health"
 
-echo "=== Cloudflare tunnel route ==="
-test -f "$CONFIG"
-cp -a "$CONFIG" "$CONFIG.bak-phoenix-$(date +%Y%m%d_%H%M%S)"
-
-python3 - "$CONFIG" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-text = path.read_text()
-
-if "hostname: phoenx.live" in text or "hostname: www.phoenx.live" in text:
-    print("PHOENIX tunnel hostname already present; leaving config unchanged")
-    raise SystemExit(0)
-
-marker = "  - service: http_status:404"
-if marker not in text:
-    raise SystemExit("ERROR: Cloudflare fallback rule not found; refusing automatic edit")
-
-insert = (
-    "  - hostname: phoenx.live\n"
-    "    service: http://localhost:8096\n"
-    "  - hostname: www.phoenx.live\n"
-    "    service: http://localhost:8096\n"
-)
-path.write_text(text.replace(marker, insert + marker, 1))
-print("Added PHOENIX ingress rules before fallback")
-PY
-
-if ! cloudflared tunnel ingress validate; then
-  echo "ERROR: tunnel validation failed; restore the newest $CONFIG.bak-phoenix-* backup"
-  exit 6
-fi
-
-systemctl restart cloudflared
-systemctl is-active --quiet cloudflared
+echo "=== Cloudflare route is a separate operator-controlled step ==="
+echo "No Cloudflare DNS, tunnel configuration, or shared tunnel service is modified."
+echo "After local acceptance, in Cloudflare Networking > Tunnels > craniumtek-production:"
+echo "  Add a Published application route: phoenx.live -> http://localhost:8096"
+echo "  Confirm this tunnel connector runs on the same host/network as the PHOENIX origin."
+echo "  Remove conflicting apex A records only as part of that controlled DNS cutover."
+echo "  Preserve all existing production routes."
+echo "  www.phoenx.live is optional and should redirect to the apex only after testing."
 
 printf '%s\n' "$SHA" >"$ROOT/RELEASE_SHA"
 chown phoenix-prod:phoenix-prod "$ROOT/RELEASE_SHA"
