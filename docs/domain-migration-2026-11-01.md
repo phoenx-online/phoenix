@@ -2,11 +2,28 @@
 
 **Owner decision:** 2026-11-01 (Philippines time)
 **Intent:** make `https://phoenx.live/` the canonical PHOENIX public website and decommission the previous `phoenx.online` domain after a safe transition.
-**State:** Approved target only. Live DNS, TLS, production release, redirects, and old-domain removal are **unverified and not performed by this commit**.
+**State:** Cloudflare zone activated and existing tunnel confirmed healthy (2026-11-02 owner evidence). PHOENIX origin, tunnel route, TLS end-to-end, production release, redirects and old-domain removal remain **unverified/not performed**.
 
 ## Important discovery
 
 On 2026-11-01 a public fetch of `https://phoenx.online/` landed on an **A.I.D.A Console Login**, not the expected PHOENIX static landing page. Do **not** delete or change this old zone, tunnel, email, redirects, or registration until the operator identifies who operates A.I.D.A and whether it legitimately depends on the domain. This check is separate from the PHOENIX website.
+
+## Verified owner evidence — 2026-11-02 (PHT)
+
+- Screenshot of Cloudflare DNS for `phoenx.live` shows **Full DNS setup** and exactly two **proxied A records** at the zone apex: `54.149.79.189` and `34.216.117.25`. These are **not the intended Cloudflare Tunnel CNAME**; do not remove or replace them until the PHOENIX origin is healthy and the change is scheduled.
+- Tunnel dashboard shows `craniumtek-production` **Healthy** with **1 replica** and **16 published apps**. `ibayong-production` is Healthy with 3 apps. An older tunnel `Craniumtek` is Down with no routes. Preserve both healthy tunnels and all existing routes.
+- Owner's Server 1 output: no `phoenix`/port 8096 container detected, and `sudo ss -ltnp '( sport = :8096 )'` found **no listener**. Port 8096 appears available, but there is **no PHOENIX production origin yet**.
+- This evidence confirms Cloudflare zone and production tunnel health **only**. New website HTTPS and PHOENIX public HTTP 200 remain unverified.
+
+### Required safe order following this evidence
+
+1. Determine whether the `craniumtek-production` tunnel connector runs on the host network or in an isolated Docker network. A route of `http://localhost:8096` works **only when localhost from the connector reaches the intended origin**; do not assume it works for a bridged container. Do not print tokens or full tunnel configuration in logs.
+2. Deploy the immutable PHOENIX static page locally using an isolated `phoenix-prod-web` container; preserve the shared server's existing ports, processes, networks and sites. Verify port 8096 returns HTTP 200 and the correct page.
+3. On the **healthy `craniumtek-production` tunnel**, add a `Published application` route for apex `phoenx.live` to the network-reachable PHOENIX origin. Do not create a new tunnel or modify unrelated 16 routes. Cloudflare may automatically create a DNS CNAME; resolve any conflict with existing apex A records deliberately rather than attempting both records together.
+4. Verify HTTPS 200, content, canonical link and unrelated sites. Optionally add `www` with a tested redirect and proper DNS.
+5. Keep legacy `phoenx.online` and its A.I.D.A console untouched pending ownership and dependency inventory.
+
+**Important:** `deploy/bootstrap-existing-prod-host.sh` now avoids changing/restarting the shared Cloudflare tunnel; production routing is a separate manual gate.
 
 ## Canonical identity
 
