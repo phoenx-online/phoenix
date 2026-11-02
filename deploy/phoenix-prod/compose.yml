@@ -32,7 +32,7 @@ services:
   tunnel:
     image: ${PHOENIX_CLOUDFLARED_IMAGE:?Set PHOENIX_CLOUDFLARED_IMAGE to an approved image digest}
     container_name: phoenix-prod-cloudflared
-    command: ["tunnel", "--no-autoupdate", "run", "--token-file", "/run/secrets/phoenix_tunnel_token"]
+    command: ["tunnel", "run", "--token-file", "/run/secrets/phoenix_tunnel_token"]
     secrets:
       - phoenix_tunnel_token
     restart: unless-stopped
