@@ -44,7 +44,7 @@ grep -Fq '<link rel="canonical" href="https://phoenx.live/">' "$RELEASE_DIR/inde
   die "dedicated tunnel token file missing"
 [[ "$(stat -c '%u' "$TOKEN_FILE")" == "65532" ]] ||
   die "token file must be owned by cloudflared nonroot UID 65532"
-[[ "$(stat -c '%a' \"$TOKEN_FILE\")" == "400" ]] ||
+[[ "$(stat -c '%a' "$TOKEN_FILE")" == "400" ]] ||
   die "token file must have mode 0400"
 
 for service in phoenix-prod-web phoenix-prod-cloudflared; do
