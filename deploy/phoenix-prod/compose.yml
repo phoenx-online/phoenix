@@ -1,0 +1,62 @@
+# PHOENIX-only production service boundary; deployment is manual and gated.
+# Requires exact image digests and a dedicated Cloudflare remote-managed tunnel.
+name: phoenix-prod
+services:
+  web:
+    image: ${PHOENIX_NGINX_IMAGE:?Set PHOENIX_NGINX_IMAGE to an approved image digest}
+    container_name: phoenix-prod-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8096:8080"
+    volumes:
+      - "${PHOENIX_RELEASE_DIR:?Set PHOENIX_RELEASE_DIR to immutable release directory}:/usr/share/nginx/html:ro"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.40
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - phoenix_ingress
+
+  tunnel:
+    image: ${PHOENIX_CLOUDFLARED_IMAGE:?Set PHOENIX_CLOUDFLARED_IMAGE to an approved image digest}
+    container_name: phoenix-prod-cloudflared
+    command: ["tunnel", "--no-autoupdate", "run", "--token-file", "/run/secrets/phoenix_tunnel_token"]
+    secrets:
+      - phoenix_tunnel_token
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 96
+    mem_limit: 256m
+    cpus: 0.50
+    networks:
+      - phoenix_ingress
+
+networks:
+  phoenix_ingress:
+    name: phoenix_prod_ingress
+    driver: bridge
+
+secrets:
+  phoenix_tunnel_token:
+    file: /srv/phoenix/secrets/tunnel-token
