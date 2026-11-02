@@ -42,12 +42,10 @@ grep -Fq '<link rel="canonical" href="https://phoenx.live/">' "$RELEASE_DIR/inde
 
 [[ -f "$TOKEN_FILE" && -s "$TOKEN_FILE" ]] ||
   die "dedicated tunnel token file missing"
-[[ "$(stat -c '%u' "$TOKEN_FILE")" == "0" ]] ||
-  die "token file must be owned by root"
-case "$(stat -c '%a' "$TOKEN_FILE")" in
-  400|600) ;;
-  *) die "token file must have mode 0400 or 0600" ;;
-esac
+[[ "$(stat -c '%u' "$TOKEN_FILE")" == "65532" ]] ||
+  die "token file must be owned by cloudflared nonroot UID 65532"
+[[ "$(stat -c '%a' \"$TOKEN_FILE\")" == "400" ]] ||
+  die "token file must have mode 0400"
 
 for service in phoenix-prod-web phoenix-prod-cloudflared; do
   if docker container inspect "$service" >/dev/null 2>&1; then
@@ -61,7 +59,7 @@ done
 # PHOENIX web service this check permits a controlled update to its own listener.
 if ss -ltn '( sport = :8096 )' | tail -n +2 | grep -q '[^[:space:]]'; then
   docker ps --format '{{.Names}} | {{.Ports}}' |
-    grep -Eq '^phoenix-prod-web \| .*127\\.0\\.0\\.1:8096->8080/tcp' ||
+    grep -Eq '^phoenix-prod-web \| .*127\.0\.0\.1:8096->8080/tcp' ||
     die "8096 is occupied by an unexpected process"
 fi
 
@@ -77,7 +75,7 @@ docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --quiet ||
 
 pass "host, Docker/Compose, 8096 ownership, minimum capacity"
 pass "SHA-scoped PHOENIX HTML and canonical domain"
-pass "immutable image digests and root-restricted separate tunnel token"
+pass "immutable image digests and dedicated nonroot tunnel token"
 pass "PHOENIX-only Compose definition validates"
 printf 'PHOENIX_PREFLIGHT=PASS\n'
 printf 'RELEASE_SHA=%s\n' "$RELEASE_SHA"
