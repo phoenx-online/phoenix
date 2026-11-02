@@ -1,58 +1,19 @@
-name: PHOENIX Existing Server Production
+name: Legacy PHOENIX production deployment (retired)
 
-# Production deployment requires explicit operator invocation after DNS/TLS cutover checks.
+# Intentionally blocked after approved dedicated-tunnel separation.
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: phoenix-production
-  cancel-in-progress: false
-
 jobs:
-  deploy:
-    runs-on: [self-hosted, linux, x64, phoenix-prod]
-    timeout-minutes: 15
-
+  legacy-retired:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
     steps:
-      - name: Verify PHOENIX production boundary
+      - name: Stop unsafe shared-host deployment workflow
         shell: bash
         run: |
-          set -Eeuo pipefail
-          test "$RUNNER_NAME" = "craniumtek-phoenix-prod"
-          test "$(whoami)" = "phoenix-prod"
-          test "$(hostname)" = "craniumtek"
-          id -nG | tr ' ' '\n' | grep -qx docker
-          test -d /srv/phoenix
-          test -w /srv/phoenix
-          echo "PHOENIX_PRODUCTION_BOUNDARY=PASS"
-
-      - name: Checkout exact release source
-        uses: actions/checkout@v4
-
-      - name: Deploy immutable static release
-        shell: bash
-        env:
-          PHOENIX_PROD_ROOT: /srv/phoenix
-          PHOENIX_PROD_PORT: "8096"
-        run: bash scripts/deploy-public-prod.sh "$GITHUB_SHA"
-
-      - name: Verify local production listener
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          test "$(curl --fail --silent --show-error -o /tmp/phx-local.html -w '%{http_code}' http://127.0.0.1:8096/)" = "200"
-          grep -q "Live Commerce Growth Operating System" /tmp/phx-local.html
-          rm -f /tmp/phx-local.html
-          echo "PHOENIX_LOCAL_ACCEPTANCE=PASS"
-
-      - name: Verify public domain
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          curl --fail --location --retry 6 --retry-delay 5 --retry-all-errors --max-time 20             https://phoenx.live/ >/tmp/phx-public.html
-          grep -q "Live Commerce Growth Operating System" /tmp/phx-public.html
-          rm -f /tmp/phx-public.html
-          echo "PHOENIX_PUBLIC_ACCEPTANCE=PASS"
+          echo "::error::Retired: use deploy/phoenix-prod/README.md and manual gated production deployment instead."
+          exit 1
