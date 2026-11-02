@@ -5,7 +5,7 @@ Status: PHX-M0.6 — repository migration complete; DEV preparation next
 ## Canonical identity
 
 - Product / brand: **PHOENIX**
-- Primary domain: `phoenx.online`
+- Primary domain: `phoenx.live`
 - GitHub organization display name: **PHOENIX**
 - GitHub organization handle: **`phoenx-online`**
 - Canonical repository: **`phoenx-online/phoenix`**
@@ -13,6 +13,10 @@ Status: PHX-M0.6 — repository migration complete; DEV preparation next
 - Default branch: `main`
 
 The product/brand spelling and domain spelling are intentionally different and must not be normalized automatically.
+
+## November 2026 primary-domain decision
+
+Primary PHOENIX domain is now **phoenx.live**. The former registration must be inventoried and retired only after the new public website is verified and the A.I.D.A console currently observed at the old hostname has been identified and protected. The change must not automatically deactivate legacy DNS, email, or app logins. See `docs/domain-migration-2026-11-01.md`.
 
 ## Gate 1 — Create organization
 
@@ -132,14 +136,14 @@ Production must not reuse MBG or iBayong credentials, database volumes, deployme
 
 ## Gate 9 — Domain activation
 
-Use `phoenx.online` as the primary public domain only after the corresponding secured runtime exists.
+Use `phoenx.live` as the primary public domain only after the corresponding secured runtime exists.
 
 Recommended mapping:
 
-- `phoenx.online` / `www.phoenx.online` -> public site
-- `app.phoenx.online` -> application
-- `api.phoenx.online` -> API only when required
-- `admin.phoenx.online` -> administration only when a separate surface is justified
+- `phoenx.live` / `www.phoenx.live` -> public site
+- `app.phoenx.live` -> application
+- `api.phoenx.live` -> API only when required
+- `admin.phoenx.live` -> administration only when a separate surface is justified
 
 Before DNS cutover:
 

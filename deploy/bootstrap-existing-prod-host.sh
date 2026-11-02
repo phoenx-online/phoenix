@@ -70,7 +70,7 @@ services:
     ports:
       - "127.0.0.1:${PORT}:80"
     volumes:
-      - "$ROOT/current:/usr/share/nginx/html:ro"
+      - "$REL:/usr/share/nginx/html:ro"
     read_only: true
     tmpfs:
       - /var/cache/nginx
@@ -94,42 +94,16 @@ done
 grep -q "Live Commerce Growth Operating System" "$ROOT/.local-health"
 rm -f "$ROOT/.local-health"
 
-echo "=== Cloudflare tunnel route ==="
-test -f "$CONFIG"
-cp -a "$CONFIG" "$CONFIG.bak-phoenix-$(date +%Y%m%d_%H%M%S)"
-
-python3 - "$CONFIG" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-text = path.read_text()
-
-if "hostname: phoenx.online" in text or "hostname: www.phoenx.online" in text:
-    print("PHOENIX tunnel hostname already present; leaving config unchanged")
-    raise SystemExit(0)
-
-marker = "  - service: http_status:404"
-if marker not in text:
-    raise SystemExit("ERROR: Cloudflare fallback rule not found; refusing automatic edit")
-
-insert = (
-    "  - hostname: phoenx.online\n"
-    "    service: http://localhost:8096\n"
-    "  - hostname: www.phoenx.online\n"
-    "    service: http://localhost:8096\n"
-)
-path.write_text(text.replace(marker, insert + marker, 1))
-print("Added PHOENIX ingress rules before fallback")
-PY
-
-if ! cloudflared tunnel ingress validate; then
-  echo "ERROR: tunnel validation failed; restore the newest $CONFIG.bak-phoenix-* backup"
-  exit 6
-fi
-
-systemctl restart cloudflared
-systemctl is-active --quiet cloudflared
+echo "=== Cloudflare route is a separate operator-controlled step ==="
+echo "No Cloudflare DNS, tunnel configuration, or shared tunnel service is modified."
+echo "After local acceptance, create a PHOENIX-only tunnel in Cloudflare Networking > Tunnels:"
+echo "  Tunnel name: phoenix-production (dedicated connector, not the existing shared tunnel)"
+echo "  Run an isolated cloudflared Docker connector on the PHOENIX-only network"
+echo "  Published application: phoenx.live -> http://phoenix-prod-web:80 within that network"
+echo "  Verify service name resolution and connectivity from the new connector to the origin."
+echo "  Remove conflicting apex A records only as part of that controlled DNS cutover."
+echo "  Do NOT touch craniumtek-production or ibayong-production routes/services."
+echo "  www.phoenx.live is optional and should redirect to the apex only after testing."
 
 printf '%s\n' "$SHA" >"$ROOT/RELEASE_SHA"
 chown phoenix-prod:phoenix-prod "$ROOT/RELEASE_SHA"
@@ -141,7 +115,7 @@ rm -f /tmp/phx-local
 echo "LOCAL_HTTP=$LOCAL"
 
 set +e
-PUBLIC="$(curl --silent --show-error --location --connect-timeout 5 --max-time 20 -o /tmp/phx-public -w '%{http_code}' https://phoenx.online/)"
+PUBLIC="$(curl --silent --show-error --location --connect-timeout 5 --max-time 20 -o /tmp/phx-public -w '%{http_code}' https://phoenx.live/)"
 CURL_RC=$?
 set -e
 
@@ -155,5 +129,5 @@ rm -f /tmp/phx-public
 echo "PHOENIX_LOCAL_ACCEPTANCE=PASS"
 echo "PHOENIX_PUBLIC_ACCEPTANCE=BLOCKED"
 echo "PUBLIC_HTTP=${PUBLIC:-000}"
-echo "The local production service is live. If the public domain is still blocked, update the Cloudflare DNS record for phoenx.online/www to the existing tunnel, then re-test."
+echo "The local production service is live. If the public domain is still blocked, update the Cloudflare DNS record for phoenx.live/www to the existing tunnel, then re-test."
 exit 7
