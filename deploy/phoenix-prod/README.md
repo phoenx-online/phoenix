@@ -13,6 +13,16 @@
 - Limit: independent containers, network, token, release, logs and rollout; still shares Server 1 kernel, Docker daemon, electricity, Internet, and Cloudflare account.
 - No Laravel, database, client accounts, uploads, brand documents, or privileged application sessions in the public-site launch.
 
+## Immediate next step: read-only Server 1 inventory
+
+Run on Server 1 from a reviewed checkout of this branch, before installing any token or starting containers:
+
+```bash
+sudo bash deploy/phoenix-prod/host-inventory-readonly.sh
+```
+
+This prints no environment files, passwords, tokens or tunnel configuration. The inventory results are safe to review in an authorized project channel. It **does not deploy PHOENIX**. Stop if it detects unexpected resource or service ownership.
+
 ## Pre-cutover gates (stop on any failure)
 
 1. Fresh Server 1 capacity check: memory, swap, CPU, disk, Docker networks/volumes, port 8096; verify other 16+3 routes before touching PHOENIX. Prior screenshot: port 8096 was empty; fresh verification is mandatory.
