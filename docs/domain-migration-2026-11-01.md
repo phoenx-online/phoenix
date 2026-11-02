@@ -19,7 +19,7 @@ On 2026-11-01 a public fetch of `https://phoenx.online/` landed on an **A.I.D.A 
 
 1. Determine whether the `craniumtek-production` tunnel connector runs on the host network or in an isolated Docker network. A route of `http://localhost:8096` works **only when localhost from the connector reaches the intended origin**; do not assume it works for a bridged container. Do not print tokens or full tunnel configuration in logs.
 2. Deploy the immutable PHOENIX static page locally using an isolated `phoenix-prod-web` container; preserve the shared server's existing ports, processes, networks and sites. Verify port 8096 returns HTTP 200 and the correct page.
-3. On the **healthy `craniumtek-production` tunnel**, add a `Published application` route for apex `phoenx.live` to the network-reachable PHOENIX origin. Do not create a new tunnel or modify unrelated 16 routes. Cloudflare may automatically create a DNS CNAME; resolve any conflict with existing apex A records deliberately rather than attempting both records together.
+3. Create a **dedicated** `phoenix-production` Cloudflare Tunnel with its own isolated `cloudflared` Docker connector, network-restricted to PHOENIX, then add its apex `phoenx.live` Published application route. Do not modify the existing `craniumtek-production` 16 routes or iBayong routes. Cloudflare may automatically create a DNS CNAME; resolve any conflict with existing apex A records deliberately rather than attempting both records together.
 4. Verify HTTPS 200, content, canonical link and unrelated sites. Optionally add `www` with a tested redirect and proper DNS.
 5. Keep legacy `phoenx.online` and its A.I.D.A console untouched pending ownership and dependency inventory.
 
@@ -44,9 +44,9 @@ On 2026-11-01 a public fetch of `https://phoenx.online/` landed on an **A.I.D.A 
 ## New domain DNS / tunnel steps (operator-run, gated)
 
 1. In Spaceship **Advanced DNS**, confirm that `phoenx.live` has the intended DNS authority. If moving to Cloudflare full DNS, add the zone to the **correct Cloudflare account**, record its assigned nameservers, then change Spaceship nameservers accordingly. Preserve/recreate any active records before switching DNS authority.
-2. Using the existing Cloudflare Tunnel, add hostname routes for `phoenx.live` (and optional `www.phoenx.live`) to the verified PHOENIX static origin, `http://localhost:8096`. Keep any unrelated tunnel routes unchanged. Never expose production port 8096 publicly.
-3. Create Cloudflare DNS records that point to the existing named tunnel (normally a CNAME to its exact `<tunnel-UUID>.cfargotunnel.com`; do not guess the UUID). Do not mix unsupported cross-account tunnel DNS.
-4. Validate the tunnel config **before** a controlled reload, confirm HTTPS certificates and routing, and verify that other projects still resolve.
+2. Create a new named Cloudflare Tunnel `phoenix-production` in the same account. Run its connector as a separate isolated Docker container on a PHOENIX-only network with origin `http://phoenix-prod-web:80` after actual connectivity verification; `http://localhost:8096` is for server-local diagnostics only. Do not run a second `cloudflared service install` or touch the 16 app shared tunnel routes.
+3. After the separate PHOENIX origin/connector are healthy, replace the two existing apex proxied A records as one controlled cutover, and point apex CNAME to the exact newly created `phoenix-production` tunnel UUID (or let Cloudflare create it from the published route). Do not guess the UUID. The tunnel and DNS zone must reside in the same Cloudflare account.
+4. Validate the dedicated PHOENIX connector and published route; do not restart or reload the shared Craniumtek/iBayong connectors. Confirm HTTPS certificates, correct page content, and unchanged routes/sites for all other projects.
 5. Merge and explicitly dispatch `.github/workflows/deploy-public-site.yml` only after its production gates and target domain are ready. A merge alone must not deploy production.
 
 ## Verification
