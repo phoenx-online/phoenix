@@ -39,6 +39,7 @@ jobs:
           set -Eeuo pipefail
           bash -n deploy/phoenix-prod/preflight-readonly.sh
           bash -n deploy/phoenix-prod/host-inventory-readonly.sh
+          bash -n deploy/phoenix-prod/memory-pressure-readonly.sh
           bash -n deploy/phoenix-prod/smoke-readonly.sh
           python3 - <<'PY'
           from pathlib import Path
