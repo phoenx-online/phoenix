@@ -23,6 +23,25 @@ sudo bash deploy/phoenix-prod/host-inventory-readonly.sh
 
 This prints no environment files, passwords, tokens or tunnel configuration. The inventory results are safe to review in an authorized project channel. It **does not deploy PHOENIX**. Stop if it detects unexpected resource or service ownership.
 
+## Memory pressure gate — 2026-11-03 owner inventory
+
+The owner executed the read-only Server 1 inventory at 12:06 PHT:
+
+- Mem: 15 GiB total, **3.2 GiB available**.
+- Swap: 3.7 GiB of 3.7 GiB occupied, with only about 1 MiB remaining.
+- Disk: 90 GB free (58% used); port 8096 free; no PHOENIX production directory.
+- All four existing venture public sites returned HTTP 200; `phoenx.live` returned HTTP 000.
+
+**Do not start additional containers solely based on available RAM.** Full swap utilization can be stale/cold and is **not** by itself proof of active thrashing; inspect live `vmstat` swap-in/swap-out, PSI stall metrics, CPU load, Docker resource usage and any recent OOM events. This assessment must precede production activation. Do not use `swapoff -a`, Docker pruning, service restarts, cache dropping, or ad-hoc resource cleanup on this shared server.
+
+Run a narrowly scoped **read-only** diagnostic on Server 1:
+
+```bash
+sudo bash deploy/phoenix-prod/memory-pressure-readonly.sh
+```
+
+Interpret `vmstat` **after the first (since-boot) data row**. Sustained nonzero `si`/`so`, high memory PSI, OOM kills, or continuing capacity deterioration are blockers. If swap remains occupied but no active pressure is seen, record a manual bounded capacity approval and monitor the small static site; it does not authorize starting the Laravel app or database. Continue only with a documented rollback and no impact to other projects.
+
 ## Pre-cutover gates (stop on any failure)
 
 1. Fresh Server 1 capacity check: memory, swap, CPU, disk, Docker networks/volumes, port 8096; verify other 16+3 routes before touching PHOENIX. Prior screenshot: port 8096 was empty; fresh verification is mandatory.
