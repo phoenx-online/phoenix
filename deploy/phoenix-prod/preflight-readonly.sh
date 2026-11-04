@@ -40,12 +40,36 @@ grep -Fq 'Live Commerce Growth Operating System' "$RELEASE_DIR/index.html" ||
 grep -Fq '<link rel="canonical" href="https://phoenx.live/">' "$RELEASE_DIR/index.html" ||
   die "canonical phoenx.live URL missing"
 
-[[ -f "$TOKEN_FILE" && -s "$TOKEN_FILE" ]] ||
-  die "dedicated tunnel token file missing"
+require_root_dir() {
+  local path="$1" label="$2" mode
+  [[ -d "$path" && ! -L "$path" ]] ||
+    die "$label must be a real directory, not a symlink"
+  [[ "$(stat -c '%u:%g' "$path")" == "0:0" ]] ||
+    die "$label must be owned by root:root"
+  mode="$(stat -c '%a' "$path")"
+  (( (8#$mode & 0022) == 0 )) ||
+    die "$label must not be group- or world-writable"
+}
+
+require_root_dir /srv/phoenix "PHOENIX root"
+require_root_dir /srv/phoenix/secrets "PHOENIX secrets directory"
+
+[[ ! -L "$TOKEN_FILE" && -f "$TOKEN_FILE" && -s "$TOKEN_FILE" ]] ||
+  die "dedicated tunnel token must be a non-symlink regular file"
+[[ "$(stat -c '%h' "$TOKEN_FILE")" == "1" ]] ||
+  die "token file must have exactly one hard link"
 [[ "$(stat -c '%u' "$TOKEN_FILE")" == "65532" ]] ||
   die "token file must be owned by cloudflared nonroot UID 65532"
 [[ "$(stat -c '%a' "$TOKEN_FILE")" == "400" ]] ||
   die "token file must have mode 0400"
+
+NETWORK_NAME="phoenix_prod_ingress"
+if docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
+  network_project="$(docker network inspect -f '{{index .Labels "com.docker.compose.project"}}' "$NETWORK_NAME" 2>/dev/null || true)"
+  network_logical_name="$(docker network inspect -f '{{index .Labels "com.docker.compose.network"}}' "$NETWORK_NAME" 2>/dev/null || true)"
+  [[ "$network_project" == "phoenix-prod" && "$network_logical_name" == "ingress" ]] ||
+    die "network $NETWORK_NAME exists but is not owned by phoenix-prod/ingress"
+fi
 
 for service in phoenix-prod-web phoenix-prod-cloudflared; do
   if docker container inspect "$service" >/dev/null 2>&1; then
