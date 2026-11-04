@@ -1,0 +1,106 @@
+name: PHOENIX isolated production source contract
+
+on:
+  pull_request:
+    paths:
+      - "deploy/phoenix-prod/**"
+      - ".github/workflows/phoenix-dedicated-tunnel-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phoenix-isolation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact candidate SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify checked-out head
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          echo "SOURCE_SHA=$EXPECTED_SHA"
+
+      - name: Bash syntax and read-only contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n deploy/phoenix-prod/preflight-readonly.sh
+          bash -n deploy/phoenix-prod/host-inventory-readonly.sh
+          bash -n deploy/phoenix-prod/memory-pressure-readonly.sh
+          bash -n deploy/phoenix-prod/prepare-static-release.sh
+          bash -n deploy/phoenix-prod/smoke-readonly.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          d = Path('deploy/phoenix-prod')
+          compose = (d / 'compose.yml').read_text()
+          preflight = (d / 'preflight-readonly.sh').read_text()
+          smoke = (d / 'smoke-readonly.sh').read_text()
+          for forbidden in ('privileged:', 'network_mode: host', '/var/run/docker.sock',
+                            'craniumtek-production', 'ibayong-production'):
+              assert forbidden not in compose, f'Forbidden deployment coupling: {forbidden}'
+          for required in ('127.0.0.1:8096:8080', 'phoenix_prod_ingress',
+                           '/run/secrets/phoenix_tunnel_token', 'PHOENIX_RELEASE_DIR',
+                           'no-new-privileges:true', 'cap_drop:', 'read_only: true',
+                           'mem_limit:', 'depends_on:'):
+              assert required in compose, f'Missing Compose contract: {required}'
+          assert compose.count('read_only: true') == 2
+          assert 'PHOENIX_PREFLIGHT=PASS' in preflight
+          for required in (
+              'NETWORK_NAME="phoenix_prod_ingress"',
+              'com.docker.compose.project',
+              'com.docker.compose.network',
+              'network $NETWORK_NAME exists but is not owned by phoenix-prod/ingress',
+              'require_root_dir /srv/phoenix "PHOENIX root"',
+              'require_root_dir /srv/phoenix/secrets "PHOENIX secrets directory"',
+              'dedicated tunnel token must be a non-symlink regular file',
+              "stat -c '%h'",
+          ):
+              assert required in preflight, f'Missing fail-closed preflight guard: {required}'
+          # Deterministic negative decision model: foreign networks and unsafe
+          # secret paths must never qualify for launch.
+          def network_ok(exists, project='', logical=''):
+              return (not exists) or (project == 'phoenix-prod' and logical == 'ingress')
+          assert network_ok(False)
+          assert network_ok(True, 'phoenix-prod', 'ingress')
+          assert not network_ok(True, 'foreign-project', 'ingress')
+          assert not network_ok(True, 'phoenix-prod', 'foreign-network')
+          def secret_path_ok(is_dir, is_link, uid, gid, mode):
+              return is_dir and not is_link and uid == 0 and gid == 0 and (mode & 0o022) == 0
+          assert secret_path_ok(True, False, 0, 0, 0o755)
+          assert not secret_path_ok(True, True, 0, 0, 0o755)
+          assert not secret_path_ok(True, False, 1000, 0, 0o755)
+          assert not secret_path_ok(True, False, 0, 0, 0o775)
+          assert 'PHOENIX_PRODUCTION_VERIFIED=PASS' in smoke
+          assert 'phoenx.live' in smoke and 'phoenx.live' in preflight
+          for forbidden in ('docker compose up', 'systemctl restart', 'cloudflared service install',
+                            'docker stop', 'docker rm'):
+              assert forbidden not in (preflight + smoke), f'Unexpected mutation: {forbidden}'
+          print('PHOENIX_SOURCE_ISOLATION_CONTRACT=PASS')
+          PY
+
+      - name: Docker Compose syntax using dummy identities
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker compose version
+          cat > /tmp/phoenix-contract.env <<'EOF'
+          PHOENIX_RELEASE_DIR=/tmp/phoenix-contract-release
+          PHOENIX_NGINX_IMAGE=nginxinc/nginx-unprivileged:stable-alpine@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          PHOENIX_CLOUDFLARED_IMAGE=cloudflare/cloudflared:2026.10.0@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          EOF
+          docker compose --env-file /tmp/phoenix-contract.env -f deploy/phoenix-prod/compose.yml config --quiet
+          echo "PHOENIX_COMPOSE_CONTRACT=PASS"
+          rm -f /tmp/phoenix-contract.env
