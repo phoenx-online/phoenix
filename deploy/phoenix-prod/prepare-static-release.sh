@@ -11,7 +11,9 @@ command -v curl >/dev/null || die "curl not installed"
 
 ROOT="/srv/phoenix"
 REL="$ROOT/releases/$SHA"
-test ! -e "$REL" || die "release directory already exists; refuse overwrite"
+[[ ! -e "$REL" && ! -L "$REL" ]] || die "release directory already exists; refuse overwrite"
+[[ ! -L "$ROOT" && ! -L "$ROOT/releases" ]] ||
+  die "PHOENIX release root contains a symbolic link; refuse to follow"
 if [[ -e "$ROOT" && ! -d "$ROOT" ]]; then
   die "/srv/phoenix exists but is not a directory"
 fi
