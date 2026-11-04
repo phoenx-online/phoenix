@@ -58,6 +58,31 @@ jobs:
               assert required in compose, f'Missing Compose contract: {required}'
           assert compose.count('read_only: true') == 2
           assert 'PHOENIX_PREFLIGHT=PASS' in preflight
+          for required in (
+              'NETWORK_NAME="phoenix_prod_ingress"',
+              'com.docker.compose.project',
+              'com.docker.compose.network',
+              'network $NETWORK_NAME exists but is not owned by phoenix-prod/ingress',
+              'require_root_dir /srv/phoenix "PHOENIX root"',
+              'require_root_dir /srv/phoenix/secrets "PHOENIX secrets directory"',
+              'dedicated tunnel token must be a non-symlink regular file',
+              "stat -c '%h'",
+          ):
+              assert required in preflight, f'Missing fail-closed preflight guard: {required}'
+          # Deterministic negative decision model: foreign networks and unsafe
+          # secret paths must never qualify for launch.
+          def network_ok(exists, project='', logical=''):
+              return (not exists) or (project == 'phoenix-prod' and logical == 'ingress')
+          assert network_ok(False)
+          assert network_ok(True, 'phoenix-prod', 'ingress')
+          assert not network_ok(True, 'foreign-project', 'ingress')
+          assert not network_ok(True, 'phoenix-prod', 'foreign-network')
+          def secret_path_ok(is_dir, is_link, uid, gid, mode):
+              return is_dir and not is_link and uid == 0 and gid == 0 and (mode & 0o022) == 0
+          assert secret_path_ok(True, False, 0, 0, 0o755)
+          assert not secret_path_ok(True, True, 0, 0, 0o755)
+          assert not secret_path_ok(True, False, 1000, 0, 0o755)
+          assert not secret_path_ok(True, False, 0, 0, 0o775)
           assert 'PHOENIX_PRODUCTION_VERIFIED=PASS' in smoke
           assert 'phoenx.live' in smoke and 'phoenx.live' in preflight
           for forbidden in ('docker compose up', 'systemctl restart', 'cloudflared service install',
