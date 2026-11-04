@@ -50,23 +50,20 @@ Interpret `vmstat` **after the first (since-boot) data row**. Sustained nonzero 
 4. Do not delete or redirect `phoenx.online` until A.I.D.A ownership, mail, OAuth, cookies, callbacks, payment/webhook dependencies, and domain impersonation risk are resolved.
 5. Back up all PHOENIX files to be replaced; no changes to shared cloudflared/Compose files.
 
-## Prepare exact release (Server 1, operator only)
+## Prepare exact static release (Server 1, operator only)
 
-Clone or fetch the exact approved PHOENIX commit from `phoenx-online/phoenix`. The current GitHub PR branch is **not a production approval**. Run these commands from a checkout at that exact SHA, after manual source review:
+Use the committed, auditable `prepare-static-release.sh` to create **only** `/srv/phoenix/releases/<approved SHA>` with the exact downloaded HTML. This does not start Docker, create tunnels or change DNS. Inspect the pinned script first; never run a mutable `main` or branch-head download.
 
 ```bash
 set -Eeuo pipefail
-test "$(hostname -s)" = "craniumtek"
-RELEASE_SHA="$(git rev-parse HEAD)"
-test -z "$(git status --porcelain --untracked-files=no)"
-test "$RELEASE_SHA" = "$(git rev-parse --verify HEAD)"
-grep -Fq '<link rel="canonical" href="https://phoenx.live/">' public-site/index.html
-sudo install -d -m 0755 /srv/phoenix/releases
-sudo install -d -m 0755 "/srv/phoenix/releases/$RELEASE_SHA"
-sudo install -o root -g root -m 0644 public-site/index.html "/srv/phoenix/releases/$RELEASE_SHA/index.html"
-sha256sum "/srv/phoenix/releases/$RELEASE_SHA/index.html"
-sudo install -d -o root -g root -m 0700 /srv/phoenix/secrets
+SHA="REPLACE_WITH_EXACT_APPROVED_40_CHAR_SHA"
+test "$SHA" != "REPLACE_WITH_EXACT_APPROVED_40_CHAR_SHA"
+curl -fsSL "https://raw.githubusercontent.com/phoenx-online/phoenix/$SHA/deploy/phoenix-prod/prepare-static-release.sh" -o /tmp/phoenix-prepare-static-release.sh
+bash -n /tmp/phoenix-prepare-static-release.sh
+sudo bash /tmp/phoenix-prepare-static-release.sh "$SHA"
 ```
+
+Expected `PHOENIX_STATIC_RELEASE_PREP=PASS`, exact `RELEASE_SHA` and SHA256 of the HTML. Do not continue if a release path already exists unexpectedly; do not overwrite other workloads.
 
 For the two image fields in `deployment.env`, select approved, up-to-date upstream images and record **exact pullable `@sha256:<64 hex>` digest references**. Do not use only `:latest` in production. Example commands to inspect images, after separately reviewing their version and provenance:
 
