@@ -4,6 +4,7 @@ on:
     paths:
       - "public-site/**"
       - "scripts/verify-public-pages.py"
+      - "scripts/test-public-page.mjs"
       - ".github/workflows/phoenix-public-pages.yml"
   workflow_dispatch:
 
@@ -35,6 +36,7 @@ jobs:
           set -Eeuo pipefail
           python3 scripts/verify-public-pages.py
           node --check public-site/site.js
+          node scripts/test-public-page.mjs
           test -s public-site/index.html
           test -s public-site/styles.css
           echo "PHOENIX_PUBLIC_SITE_LAUNCH_SOURCE=PASS"
