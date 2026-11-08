@@ -7,8 +7,7 @@ pass() { printf 'PASS: %s\n' "$*"; }
 [[ "$#" -ge 1 && "$#" -le 2 ]] || die "usage: preflight-readonly.sh web|tunnel [deployment.env]"
 MODE="$1"
 [[ "$MODE" == "web" || "$MODE" == "tunnel" ]] || die "mode must be web or tunnel"
-ENVFILE="$(printf '%s' "$2" 2>/dev/null || true)"
-if [[ -z "$ENVFILE" ]]; then ENVFILE="/srv/phoenix/deployment.env"; fi
+ENVFILE="${2:-/srv/phoenix/deployment.env}"
 
 [[ "$(hostname -s)" == "craniumtek" ]] || die "wrong production host"
 [[ "$(id -u)" -eq 0 ]] || die "run under sudo"
