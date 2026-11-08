@@ -1,0 +1,65 @@
+# PHOENIX public website and tunnel on Server 1 only.
+# Independent Compose project: does not bind or manage any other project's services.
+name: phoenix-prod
+services:
+  web:
+    image: ${PHOENIX_NGINX_IMAGE:?Set approved nginx image at sha256 digest}
+    container_name: phoenix-prod-web
+    user: "101:101"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8096:8080"
+    volumes:
+      - "${PHOENIX_RELEASE_DIR:?Set approved release path}:/usr/share/nginx/html:ro"
+      - "${PHOENIX_NGINX_CONFIG:?Set approved nginx config}:/etc/nginx/conf.d/default.conf:ro"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.4
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - phoenix_ingress
+
+  tunnel:
+    image: ${PHOENIX_CLOUDFLARED_IMAGE:?Set approved cloudflared image at sha256 digest}
+    container_name: phoenix-prod-cloudflared
+    user: "65532:65532"
+    command: ["tunnel", "run", "--token-file", "/run/secrets/phoenix_tunnel_token"]
+    secrets:
+      - phoenix_tunnel_token
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 96
+    mem_limit: 256m
+    cpus: 0.5
+    networks:
+      - phoenix_ingress
+
+networks:
+  phoenix_ingress:
+    name: phoenix_prod_ingress
+    driver: bridge
+
+secrets:
+  phoenix_tunnel_token:
+    file: /srv/phoenix/secrets/tunnel-token
