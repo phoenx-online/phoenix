@@ -1,0 +1,105 @@
+name: PHOENIX Server 1 isolated public origin checks
+
+on:
+  pull_request:
+    paths:
+      - "deploy/phoenix-server1/**"
+      - "public-site/**"
+      - "scripts/verify-public-pages.py"
+      - "scripts/test-public-page.mjs"
+      - ".github/workflows/phoenix-server1-public.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-public-origin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out precise candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify source and shell contracts
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          python3 scripts/verify-public-pages.py
+          node --check public-site/site.js
+          node scripts/test-public-page.mjs
+          for script in deploy/phoenix-server1/*.sh; do bash -n "$script"; done
+          python3 - <<'PY'
+          from pathlib import Path
+          compose = Path('deploy/phoenix-server1/compose.yml').read_text()
+          nginx = Path('deploy/phoenix-server1/nginx.conf').read_text()
+          release = Path('deploy/phoenix-server1/prepare-static-release.sh').read_text()
+          for bad in ['privileged:', 'network_mode: host', '/var/run/docker.sock',
+                      'craniumtek-production', 'ibayong-production', 'cloudflared.service']:
+              assert bad not in compose, bad
+          for good in ['127.0.0.1:8096:8080', 'phoenix_prod_ingress',
+                       'PHOENIX_RELEASE_DIR', 'PHOENIX_NGINX_CONFIG',
+                       'phoenix_tunnel_token', 'no-new-privileges:true',
+                       'read_only: true', 'cap_drop:', 'mem_limit:', 'cpus:']:
+              assert good in compose, good
+          assert compose.count('read_only: true') == 2
+          assert 'listen 8080 default_server;' in nginx
+          assert "frame-ancestors 'none'" in nginx
+          assert "script-src 'self'" in nginx
+          assert 'styles.css site.js favicon.svg robots.txt sitemap.xml' in release
+          assert "Go live." in Path('public-site/index.html').read_text()
+          print("PHOENIX_SERVER1_SOURCE_ISOLATION=PASS")
+          PY
+
+      - name: Validate Docker Compose without real tokens
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker compose version
+          cat > /tmp/phoenix-ci.env <<'EOF'
+          PHOENIX_RELEASE_DIR=/tmp/phoenix-ci-release
+          PHOENIX_NGINX_CONFIG=/tmp/phoenix-ci-config/default.conf
+          PHOENIX_NGINX_IMAGE=nginxinc/nginx-unprivileged:stable-alpine@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          PHOENIX_CLOUDFLARED_IMAGE=cloudflare/cloudflared:latest@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          EOF
+          docker compose --env-file /tmp/phoenix-ci.env \
+            -f deploy/phoenix-server1/compose.yml config --quiet
+          echo "PHOENIX_SERVER1_COMPOSE_CONTRACT=PASS"
+
+      - name: Run read-only NGINX origin in hosted CI
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker pull nginxinc/nginx-unprivileged:stable-alpine
+          docker run -d --name phoenix-origin-ci \
+            --user 101:101 --read-only --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --tmpfs /tmp:rw,noexec,nosuid,size=32m \
+            --memory 128m --cpus 0.4 \
+            -v "$PWD/public-site:/usr/share/nginx/html:ro" \
+            -v "$PWD/deploy/phoenix-server1/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+            -p 127.0.0.1:18096:8080 \
+            nginxinc/nginx-unprivileged:stable-alpine
+          trap 'docker logs phoenix-origin-ci 2>&1 | tail -n 30 || true; docker rm -f phoenix-origin-ci >/dev/null 2>&1 || true' EXIT
+          ready=0
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS --max-time 2 http://127.0.0.1:18096/ -o /tmp/phoenix-local.html; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = 1
+          grep -Fq 'Go live.' /tmp/phoenix-local.html
+          grep -Fq 'phoenx.live' /tmp/phoenix-local.html
+          curl -fsSI http://127.0.0.1:18096/ |
+            grep -iq '^Content-Security-Policy:'
+          for file in styles.css site.js favicon.svg robots.txt sitemap.xml; do
+            curl -fsS --max-time 6 "http://127.0.0.1:18096/$file" -o /dev/null
+          done
+          echo "PHOENIX_SERVER1_NGINX_RUNTIME=PASS"
