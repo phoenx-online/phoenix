@@ -70,6 +70,12 @@ printf '%s\n' "$SHA" > "$TEMP_REL/RELEASE_SHA"
 chmod 0644 "$TEMP_REL/RELEASE_SHA"
 chown -R root:root "$TEMP_REL" "$TEMP_CONF"
 
+# mktemp -d defaults to 0700. The static web container runs as UID 101
+# and requires search/read permission on the bind-mounted release directory.
+# Contents remain root-owned, individual static files remain 0644.
+# This configuration directory contains only non-secret release definitions.
+chmod 0755 "$TEMP_REL" "$TEMP_CONF"
+
 # The two directories are scoped to this never-before-used SHA.
 mv -- "$TEMP_CONF" "$CONF"
 mv -- "$TEMP_REL" "$REL"
