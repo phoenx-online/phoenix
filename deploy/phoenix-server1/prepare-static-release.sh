@@ -51,6 +51,7 @@ fetch "deploy/phoenix-server1/nginx.conf" "$TEMP_CONF/default.conf"
 fetch "deploy/phoenix-server1/compose.yml" "$TEMP_CONF/compose.yml"
 fetch "deploy/phoenix-server1/preflight-readonly.sh" "$TEMP_CONF/preflight-readonly.sh"
 fetch "deploy/phoenix-server1/smoke-readonly.sh" "$TEMP_CONF/smoke-readonly.sh"
+fetch "deploy/phoenix-server1/deployment.env.example" "$TEMP_CONF/deployment.env.example"
 chmod 0755 "$TEMP_CONF/preflight-readonly.sh" "$TEMP_CONF/smoke-readonly.sh"
 
 grep -Fq '<link rel="canonical" href="https://phoenx.live/">' "$TEMP_REL/index.html" ||
