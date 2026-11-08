@@ -52,6 +52,8 @@ jobs:
           assert "frame-ancestors 'none'" in nginx
           assert "script-src 'self'" in nginx
           assert 'styles.css site.js favicon.svg robots.txt sitemap.xml' in release
+          # Regression: mktemp -d creates mode 0700; UID 101 must traverse the release.
+          assert 'chmod 0755 "$TEMP_REL" "$TEMP_CONF"' in release, "Nonroot static bind mount would be inaccessible"
           assert "Go live." in Path('public-site/index.html').read_text()
           print("PHOENIX_SERVER1_SOURCE_ISOLATION=PASS")
           PY
