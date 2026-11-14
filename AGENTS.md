@@ -39,3 +39,13 @@ The V1 product wedge is Live Selling Operations. Graph work should strengthen th
 ## Production rule
 
 No production deployment, production DNS activation, real-money workflow, or automatic deployment from `main` is authorized merely because a graph contract exists. Existing source-of-truth gates remain authoritative.
+
+## Engineering quality and transaction integrity — Founder-approved 2026-11-14 PHT
+
+Apply **YAGNI, KISS, DRY and SOLID** proportionately: deliver the smallest currently required, readable and testable slice; reuse established domain rules before adding abstractions; reject speculative features, columns, provider integrations and generalized frameworks.
+
+For real **multi-write financial, booking, credit, inventory, order, payout or other business-critical transactions**, uphold **ACID**: atomic commit/rollback, database constraints and valid state transitions, concurrency-safe locking/conditional writes, and durable commits. Specify the invariant, canonical product owner and transaction boundary. External marketplaces, payment gateways, messages and webhooks do not join local DB transactions: use appropriately tested idempotency, durable outbox and reconciliation only when needed.
+
+For changed high-risk paths, record **success, injected failure/rollback, concurrent requests/double-submit, authorization/tenant-scope negative tests**, and their actual results as PASS, FAIL, NOT_RUN or N/A with reason. Preserve required security, privacy, backup/restore, observability, staging, release and rollback protections; **YAGNI never waives mandatory controls**.
+
+**Product-specific source-of-truth, branch/production authority, data isolation and stricter release rules always prevail.** Only claim compliance or deployed behavior with exact-source and runtime evidence. This policy adoption does not itself change application code, schema, infrastructure, deployment or production authority.
