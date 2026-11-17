@@ -38,3 +38,40 @@ Tests cover malicious/invalid input refusal, duration ceiling, file type verific
 - Add a licensed commercial provider adapter only after approving API terms, cost ceilings, brand/model usage rights and retry protection. Until then this is a local product-motion editor rather than an AI generator.
 
 Tracks issue #44, with source intent from #42 and #41. Proposed future promotion requires exact-SHA tests, security/tenant proof, independent staging, backup/rollback and owner release approval. **Never deploy it to Server 1 directly.**
+
+## V0.2 local queue extension (17 November 2026)
+
+The queue workflow is deliberately **not cloud AI generation** and **not integrated with Laravel authentication**. It remains localhost-only and intended for non-sensitive test media; brand scopes, tenant isolation, database-backed durability, malware scanning, provider contracts and cost-ledger settlement are still pending.
+
+- `studio_jobs.py` provides a single FFmpeg preview worker with a queue of two pending requests, and at most three queued/running requests.
+- Every job requires `provider=local_ffmpeg`, `rights_confirmed=true` and `max_cost_cents=0`. Nonzero budgets and external AI providers fail closed.
+- A repeat request with the same idempotency key and identical content returns the existing job; conflicting content with the same key returns HTTP 409.
+- `POST /api/jobs` creates the zero-cost job (HTTP 202); `GET /api/jobs/{id}` reports status; `GET /api/jobs/{id}/video` downloads completed MP4s. `POST /api/render` is disabled (HTTP 410) to avoid bypassing gates.
+- Jobs are ephemeral; rendered files expire 15 minutes after completion and the server removes the temporary root when shut down. At most 20 jobs are retained per process. Results remain watermarked internal concepts.
+- The UI requires rights acknowledgment before queueing; shows actual job state and downloads only after completion.
+
+Run checks:
+
+```bash
+python3 -m unittest discover -s tests -v
+python3 tests/smoke_http.py
+# UI syntax check:
+# extract the inline <script> to a .js file and run: node --check file.js
+```
+
+### Tests performed on 17 November 2026
+
+- 10/10 Python unit/integration tests PASS (including actual FFmpeg H.264 export).
+- HTTP smoke PASS (health, rights rejection, cloud disabled, legacy endpoint gone, idempotency, queue -> MP4 720x1280).
+- Node syntax check PASS.
+- Manual visual UI QA via browser: separate evidence needed if not explicitly recorded.
+
+### Not yet implemented / release blockers
+
+- **No** actual Runway/Kling/Google model provider or paid API requests, model key storage, cloud upload, or generative AI.
+- **No** signed rights proofs, multi-user auth, tenant policy, regulatory or merchant release, production publishing, persistent job reconciliation, commercial billing or subscriptions.
+- **No** OS-level cgroup/seccomp worker isolation or malware scan. The local worker is a Python thread executing FFmpeg; do not call it a production-isolated process.
+- **No** deployment to Server 2 or Server 1. An authenticated PHOENIX app foundation (#29/#35 and foundation PRs) must be verified before integration.
+- FFmpeg timeouts and the queue capacity constrain the preview, but these controls alone are not sufficient for hostile uploads or production usage.
+
+Track: #44 (unified creative studio) and #45 (prototype). The next step is a deliberately small Laravel integration only after its authentication and brand scope gates are available, followed by a provider-neutral *stub* with approved budget/consent recording. No paid provider may be turned on by default.
