@@ -11,7 +11,10 @@ Implement the smallest testable piece of the PHOENIX Content Studio roadmap: rea
 Requires Python 3.10+, `ffmpeg` compiled with `libx264` and `drawtext`, and DejaVuSans font at `/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf`.
 
 ```bash
-cd prototypes/ai-studio-local
+# From the downloaded ZIP, after extraction:
+cd phoenix_ai_studio_prototype
+# Or, inside the GitHub repo:
+# cd prototypes/ai-studio-local
 python3 server.py
 # Open http://127.0.0.1:8766 in the same computer's browser
 ```
