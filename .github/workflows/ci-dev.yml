@@ -1,0 +1,72 @@
+name: PHOENIX DEV CI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phoenix-dev-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dev-foundation:
+    runs-on: [self-hosted, linux, x64, phoenix-dev]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@v4
+
+      - name: Create ephemeral CI environment
+        run: bash scripts/make-dev-env.sh .env.ci 18081
+
+      - name: Validate Compose definition
+        run: |
+          set -a
+          source .env.ci
+          set +a
+          docker compose --project-name phoenix-ci-${GITHUB_RUN_ID} --env-file .env.ci -f compose.dev.yml config >/dev/null
+
+      - name: Build and start isolated CI stack
+        run: |
+          set -a
+          source .env.ci
+          set +a
+          docker compose --project-name phoenix-ci-${GITHUB_RUN_ID} --env-file .env.ci -f compose.dev.yml up -d --build
+
+      - name: Wait for Laravel bootstrap
+        run: curl --fail --retry 60 --retry-delay 2 --retry-connrefused http://127.0.0.1:18081/healthz
+
+      - name: Verify PostgreSQL migration write path
+        run: |
+          set -a
+          source .env.ci
+          set +a
+          docker compose --project-name phoenix-ci-${GITHUB_RUN_ID} --env-file .env.ci -f compose.dev.yml exec -T app php artisan migrate --force
+
+      - name: Run Laravel tests
+        run: |
+          set -a
+          source .env.ci
+          set +a
+          docker compose --project-name phoenix-ci-${GITHUB_RUN_ID} --env-file .env.ci -f compose.dev.yml exec -T app php artisan test
+
+      - name: Verify PostgreSQL Redis and HTTP health
+        run: |
+          set -a
+          source .env.ci
+          set +a
+          docker compose --project-name phoenix-ci-${GITHUB_RUN_ID} --env-file .env.ci -f compose.dev.yml exec -T postgres pg_isready -U "$DB_USERNAME" -d "$DB_DATABASE"
+          test "$(docker compose --project-name phoenix-ci-${GITHUB_RUN_ID} --env-file .env.ci -f compose.dev.yml exec -T redis redis-cli ping | tr -d '\r')" = "PONG"
+          curl --fail http://127.0.0.1:18081/healthz
+
+      - name: Tear down CI stack
+        if: always()
+        run: |
+          set -a
+          source .env.ci 2>/dev/null || true
+          set +a
+          docker compose --project-name phoenix-ci-${GITHUB_RUN_ID} --env-file .env.ci -f compose.dev.yml down -v --remove-orphans || true
+          rm -f .env.ci

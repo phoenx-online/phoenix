@@ -1,126 +1,116 @@
 # PHOENIX Security Audit
 
-Status: PHX-M0.6 — repository/runtime pre-bootstrap audit
+Status: **PHX-M1 — DEV foundation hardening in progress**
 
 ## Scope
 
-This audit covers the canonical repository `phoenx-online/phoenix` after organization transfer and canonical rename. It focuses on repository execution risk and the legacy runtime scaffold. It is not a production penetration test.
+This audit covers `phx-m1-dev-foundation` in the canonical repository `phoenx-online/phoenix`. It focuses on repository execution risk, DEV isolation, secrets, and CI/CD safety. It is not a production penetration test and does not authorize production.
 
-## Verified safe changes
+## Resolved execution risks
 
-- repository now lives under the dedicated PHOENIX organization
-- repository numeric ID remained `1094814392` through transfer and rename
-- branch and PR continuity are preserved
-- the legacy `.github/workflows/deploy.yml` automatic production-like deployment path was physically removed
-- no current workflow is authorized to deploy PHOENIX production from `main`
-- PHOENIX has a documented independent product boundary from Craniumtek, MBG, and iBayong
+The current PHX-M1 branch physically removes these superseded paths:
 
-## Current observations
+- `.github/workflows/deploy.yml` — already removed in PHX-M0.5; no automatic main-to-DigitalOcean deployment remains
+- root `Dockerfile` — removed; it used the historical PHP 8.2/MySQL runtime
+- root `docker-compose.yml` — removed; it used MariaDB, literal example passwords, fixed container names and public 80/443 bindings
+- `deploy/deploy-enterprise.sh` — removed; it upgraded the host, used `/var/www/phoenix`, contained destructive clone assumptions and production-like root operations
+- `deploy/nginx_phoenix.conf` — removed; it represented an obsolete host/domain layout
+- `database/seeders/AdminUserSeeder.php` — removed; it contained the hardcoded example admin password `password123` and referenced a non-canonical legacy user model
 
-### P0 — Legacy executable deployment path
+Git history preserves these artifacts for audit, but they are no longer executable current paths.
 
-**RESOLVED.**
+## Modernized DEV controls
 
-The historical workflow deployed every `main` push to a DigitalOcean droplet using a GitHub-hosted runner, SSH as root, and legacy `/var/www/phoenix` assumptions. That workflow has been removed.
+PHX-M1 adds:
 
-### P1 — Repository is public
+- PostgreSQL as the authoritative DEV database
+- Redis isolated inside the PHOENIX DEV Docker network
+- loopback-only application host binding by default
+- no host PostgreSQL or Redis port publication
+- project-scoped Compose naming; no fixed global `container_name`
+- generated local DEV secrets in ignored `.env.dev`
+- mode 600 on generated DEV environment files
+- no production secrets in templates
+- `/healthz` Laravel health endpoint
+- PHPUnit smoke tests
+- read-only DEV host verifier
+- manual-only self-hosted CI workflow
+- dedicated `phoenix-dev` runner label
 
-**OPEN — deliberate owner decision required.**
+## P0/P1 open gates
 
-The repository is currently public. Public visibility is not automatically wrong, but it should be intentional for a commercial product.
+### P0 — Fresh host verification before execution
 
-Before changing visibility, review Git history for accidentally committed secrets and decide whether PHOENIX is intended to be open source, source-available, or private proprietary software.
+The intended older DEV host is `craniumtek-lab-01`. Prior evidence is acceptable planning context but not sufficient to start a new stack. Run `scripts/verify-dev-host.sh` immediately before bootstrap and stop on critical failures.
 
-### P1 — Historical Docker Compose is not production-safe
+### P0 — Public repository + self-hosted runner exposure
 
-**OPEN — must be replaced before runtime use.**
+The repository is currently public. Do not register the PHOENIX self-hosted runner until repository visibility is changed to private or a deliberate public-source runner security model is approved.
 
-Current historical `docker-compose.yml` contains:
+The prepared `ci-dev.yml` is therefore `workflow_dispatch` only. It does not automatically execute untrusted pull-request code.
 
-- MariaDB 10.6 despite the approved PostgreSQL architecture baseline
-- literal example passwords `changeme` and `rootpass`
-- fixed `container_name` values that weaken Compose project isolation
-- direct host bindings for ports 80 and 443
-- legacy service and volume assumptions
+### P1 — Repository history exposure
 
-These values are historical examples, not approved runtime configuration.
+Historical commits contain known placeholder/example credentials such as `changeme`, `rootpass`, and `password123`. Current PHX-M1 files remove those executable examples, but history remains public while the repository remains public.
 
-### P1 — Historical `.env.example` is misleading
+No evidence in the current review proves those placeholders were live credentials. Nevertheless, never reuse them, and rotate any credential if external evidence shows it was ever deployed.
 
-**OPEN — modernize before DEV bootstrap.**
+### P1 — Docker privilege boundary
 
-The current example declares:
+A self-hosted runner user with Docker access effectively has powerful host capabilities. Treat the runner as trusted-code execution, keep it repository-scoped, run it as the `phoenix` user rather than root, and never expose unrelated product or production secrets to it.
 
-- `APP_ENV=production`
-- MySQL as the database
-- `DB_PASSWORD=changeme`
-- Redis as session/cache/queue infrastructure without a current runtime decision proving each use
+### P1 — Older mechanical disk
 
-No evidence indicates the example password is a live secret, but it must not be reused. The file should be replaced with a placeholder-only DEV-safe template during scaffold modernization.
-
-### P1 — Historical Dockerfile is stale
-
-**OPEN — modernize before runtime use.**
-
-The Dockerfile uses PHP 8.2, installs MySQL extensions, copies the whole source tree, and performs `composer install --no-dev` at image build time. It reflects the earlier scaffold, not the approved modern PHOENIX DEV architecture.
-
-### P1 — Legacy deploy directory and Nginx assumptions
-
-**OPEN — audit before any reverse-proxy use.**
-
-Files under `deploy/` are historical. They must not be assumed to represent the current host, TLS, domain, network, user, or file layout.
+The intended DEV host uses an older mechanical HDD with historical SMART warnings. Prior short/long tests completed without error, but PHOENIX DEV must not treat that machine as the sole backup location. A current SMART/backup check remains part of the host gate.
 
 ## Secrets policy
 
-No runtime secret should be stored in the repository.
-
-Required controls for the new DEV baseline:
-
-- PHOENIX-only secrets
+- no real secrets in Git
 - no production secrets in DEV
-- least-privilege service credentials
-- private host environment files, preferably mode `600`
+- generated PHOENIX-only DB/application credentials
+- private env files, mode 600 where practical
 - no shared MBG/iBayong/Craniumtek credentials
-- rotate any credential proven to have been publicly committed or otherwise exposed
+- no registration token stored in repository or retained documentation
+- rotate any credential proven to have been exposed
 
 ## CI/CD policy
 
-Approved direction:
-
-- self-hosted PHOENIX runner for normal CI/CD
-- no root runner
+- self-hosted PHOENIX DEV runner only after the exposure gate
+- repository-level runner initially
+- non-root runner account
 - no automatic production deployment from `main`
-- explicit environment boundaries for DEV, staging, and production
-- secrets scoped per environment
-- deployments must be reversible and evidence-gated
+- CI uses isolated `phoenix-ci-*` project namespaces and ephemeral local env files
+- CI cleanup removes containers, volumes and ephemeral env material
+- staging and production require separate later gates
 
 ## Runtime isolation policy
 
-PHOENIX must have independent:
+PHOENIX DEV must have independent:
 
-- Linux/service account where practical
+- Linux account/path boundary
 - Docker project/network/volumes
-- PostgreSQL database/user
-- Redis boundary
+- PostgreSQL database/user/volume
+- Redis volume/namespace
 - secrets
 - logs
 - backups
-- runner
-- deployment workflow
+- self-hosted runner
 
-Shared physical hardware may be considered later, but shared application credentials or data stores are not allowed by default.
+Shared physical DEV hardware with iBayong is permitted only while these boundaries and resource limits remain intact. Production resources are out of scope.
 
-## Next security work
+## Current acceptance sequence
 
-1. Perform a repository history secret scan before deciding whether to keep the repository public.
-2. Modernize `.env.example` to placeholder-only values.
-3. Replace the historical Compose and Dockerfile baseline with PostgreSQL-based DEV definitions.
-4. Remove or quarantine superseded deploy files once their historical value is captured.
-5. Add dependency/security checks to the self-hosted CI pipeline.
-6. Add an application health endpoint and smoke test.
-7. Document backup/restore for each environment.
-8. Add staging and production threat/risk reviews before activation.
+1. Fresh host verification.
+2. Review warnings/current workload.
+3. Build PHX-M1 branch privately on `craniumtek-lab-01`.
+4. Generate DEV secrets locally.
+5. Start `phoenix-dev` stack and pass PostgreSQL/Redis/HTTP gates.
+6. Run Laravel migration + PHPUnit smoke tests.
+7. Resolve repository visibility before runner registration.
+8. Register PHOENIX-only runner.
+9. Run manual self-hosted CI and verify cleanup.
+10. Perform restart/recreate and DEV backup/restore smoke test.
 
 ## Production authorization
 
-None. This audit does not authorize a PHOENIX production deployment or DNS cutover.
+**NONE.** No production deployment, DNS cutover, production credentials, or cross-product runtime sharing is authorized by PHX-M1.
