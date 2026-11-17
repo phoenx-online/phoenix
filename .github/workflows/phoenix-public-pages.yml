@@ -1,0 +1,42 @@
+name: PHOENIX public website release checks
+on:
+  pull_request:
+    paths:
+      - "public-site/**"
+      - "scripts/verify-public-pages.py"
+      - "scripts/test-public-page.mjs"
+      - ".github/workflows/phoenix-public-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify checkout identity
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          echo "PHOENIX_PUBLIC_SOURCE_SHA=$EXPECTED_SHA"
+
+      - name: Validate no-account public website
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/verify-public-pages.py
+          node --check public-site/site.js
+          node scripts/test-public-page.mjs
+          test -s public-site/index.html
+          test -s public-site/styles.css
+          echo "PHOENIX_PUBLIC_SITE_LAUNCH_SOURCE=PASS"
