@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PHOENIX AI Studio — Local Editor Prototype</title>
+<style>
+:root{font:14px/1.5 Inter,system-ui,sans-serif;color:#e9eaf4;background:#0c1020;--line:#323950;--panel:#161c2c;--muted:#a0abc6;--accent:#a6fbdb}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}header{padding:16px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:#111627}header b{font-size:18px;letter-spacing:.02em}small{color:var(--muted)}.pill{border:1px solid #36594f;color:#a6fbdb;border-radius:30px;padding:5px 10px;font-size:11px}.shell{display:grid;grid-template-columns:minmax(240px,330px) minmax(320px,1fr) minmax(240px,330px);gap:18px;padding:20px;max-width:1700px;margin:auto}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}.panel h2{margin:0 0 16px;font-size:15px}.field{display:block;margin:15px 0}.field>span{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}input[type=text],select,input[type=number]{background:#0b1120;color:#f2f5ff;border:1px solid #3b445e;border-radius:9px;padding:10px;width:100%;min-width:0}input[type=file]{max-width:100%;color:var(--muted)}.btn{border:1px solid #4b5775;background:#28324b;color:white;border-radius:9px;padding:9px 12px}.btn.primary{background:var(--accent);color:#0e2631;border-color:var(--accent);font-weight:700}.btn:hover:not(:disabled){filter:brightness(1.15)}.stack{display:flex;flex-wrap:wrap;gap:8px}.preview-wrap{display:flex;justify-content:center;background:radial-gradient(ellipse,#273650,#0a1020);border:1px solid #2b344b;border-radius:14px;padding:18px}.preview{aspect-ratio:9/16;width:min(100%,380px);max-height:64vh;position:relative;overflow:hidden;border-radius:12px;background:linear-gradient(160deg,#fffbf3,#f6dac0 65%,#ecc6a6);display:grid;place-items:center;color:#1a2737}.preview img{position:absolute;width:100%;height:100%;object-fit:contain}.preview .empty{position:relative;max-width:170px;text-align:center;opacity:.75}.preview .caption{position:absolute;bottom:12%;left:5%;right:5%;background:#0b1426b8;padding:10px 14px;text-align:center;border-radius:7px;color:white;font-size:clamp(14px,2vw,24px);font-weight:700}.preview .watermark{position:absolute;bottom:3%;font-weight:700;font-size:9px;background:#0b1426cf;border-radius:4px;padding:4px 6px;color:#fff;letter-spacing:.04em}.shot{display:grid;grid-template-columns:1fr auto;gap:8px;padding:12px;border:1px solid #37415a;border-radius:12px;margin-bottom:10px;background:#101727}.shot.active{border-color:#76e1c2}.shot b{font-size:13px}.shot small{display:block}.shot input{margin-top:8px}.tiny{font-size:12px;padding:5px 8px;border-radius:7px}.status{margin:14px 0;color:var(--muted);min-height:42px}.note{color:#d2b385;font-size:12px;line-height:1.55;margin-top:12px}.metrics{display:flex;justify-content:space-between;margin:12px 0 14px;color:var(--muted)}.timeline{margin:18px 0 0;display:flex;height:30px;border-radius:7px;overflow:hidden;border:1px solid var(--line)}.timeline div{display:flex;align-items:center;justify-content:center;background:#304d5f;color:#fff;border-right:1px solid #0b1420;font-size:11px;overflow:hidden}.timeline div:nth-child(even){background:#436c65}.footer{margin:15px 0 5px;color:#7785a2;font-size:12px;text-align:center}@media(max-width:1060px){.shell{grid-template-columns:1fr 1fr}.right{grid-column:1/-1}}@media(max-width:700px){.shell{display:block;padding:12px}.panel{margin-bottom:12px}header{padding:12px}.preview{max-height:54vh}}
+</style>
+</head>
+<body>
+<header><div><b>PHOENIX <span style="color:var(--accent)">AI Studio</span></b><br><small>Offline editor &amp; MP4 renderer prototype</small></div><span class="pill">LOCAL DEV ONLY</span></header>
+<div class="shell">
+<section class="panel"><h2>01 · Product source</h2><label class="field"><span>Project title</span><input id="projectTitle" type="text" maxlength="80" value="Product Commercial Concept"></label><label class="field"><span>Reference product image (PNG, JPEG, WebP; max 8 MB)</span><input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp"></label><p class="note">Only an approved product image. The entire file stays in this browser and on your localhost machine during rendering; no AI provider is called.</p><h2 style="margin-top:28px">02 · Visual style</h2><div class="field"><span>Aspect ratio</span><input type="text" value="9:16 vertical" disabled></div><div class="field"><span>Export quality</span><input type="text" value="720 × 1280 MP4 · H.264 · 24 fps" disabled></div><div class="field"><span>Generation engine</span><input type="text" value="FFmpeg motion graphics (not AI generation)" disabled></div><div class="field"><span>Brand claim status</span><input type="text" value="Internal concept · Not approved" disabled></div></section>
+<section class="panel"><h2>03 · Live preview</h2><div class="preview-wrap"><div class="preview" id="preview"><div class="empty" id="empty">Upload your real product image to begin</div><img id="productImage" hidden alt="Uploaded product preview"><div class="caption" id="previewCaption" hidden></div><div class="watermark">INTERNAL CONCEPT — NOT APPROVED FOR PUBLICATION</div></div></div><div class="metrics"><span id="sceneCounter">Scene 1 of 3</span><span id="duration">0 seconds</span></div><div class="stack"><button class="btn" id="previous">← Previous shot</button><button class="btn" id="next">Next shot →</button></div><div class="timeline" id="timeline"></div><div class="status" id="status" role="status">Ready to preview. Upload an image to export.</div><button class="btn primary" id="render" disabled>Export internal MP4</button><p class="note">Render is CPU-based and can take some time. The server adds a permanent internal-review watermark. All rendered files are downloaded directly; the prototype retains no media library or user account.</p></section>
+<section class="panel right"><h2>04 · Shot timeline <small>(up to 6)</small></h2><div id="shots"></div><button id="addShot" class="btn">+ Add shot</button><p class="note">Adjust camera behavior, captions and duration per scene. The genuine product photo is retained as the visual source. A full CapCut-like multitrack editor is a later phase.</p></section>
+</div><p class="footer">PHOENIX internal prototype · No online publishing, payments, avatars, or external AI generation</p>
+<script>
+'use strict';
+let imageData = '';
+let selected = 0;
+const scenes = [
+  {style:'reveal',seconds:3,caption:'Product introduction'},
+  {style:'detail',seconds:3,caption:'Packaging detail'},
+  {style:'closing',seconds:4,caption:'300 mL · Internal concept'}
+];
+const $ = id => document.getElementById(id);
+const styles = ['reveal','detail','hero','closing'];
+function el(tag,text,cls){const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(cls)node.className=cls;return node;}
+function button(label,action,disabled=false){const b=el('button',label,'btn tiny');b.type='button';b.disabled=disabled;b.addEventListener('click',action);return b;}
+function refresh(){
+  $('shots').replaceChildren();
+  scenes.forEach((scene,index)=>{
+    const card=el('div',undefined,'shot'+(index===selected?' active':''));
+    const left=el('div');
+    left.append(el('b',`Scene ${index+1}`),el('small',`${scene.seconds} seconds`));
+    const kind=el('select');
+    styles.forEach(style=>{const o=el('option',style.charAt(0).toUpperCase()+style.slice(1));o.value=style;o.selected=style===scene.style;kind.append(o)});
+    kind.addEventListener('change',()=>{scene.style=kind.value;selected=index;refresh()});
+    const label=el('input');label.type='text';label.maxLength=90;label.placeholder='Optional safe caption';label.value=scene.caption;
+    label.addEventListener('input',()=>{scene.caption=label.value;if(selected===index)updatePreview()});
+    const seconds=el('input');seconds.type='number';seconds.min='1';seconds.max='6';seconds.value=String(scene.seconds);
+    seconds.addEventListener('change',()=>{const value=Number(seconds.value);scene.seconds=Math.max(1,Math.min(6,Number.isFinite(value)?Math.round(value):3));refresh()});
+    left.append(kind,label,seconds);
+    const tools=el('div');tools.style.display='grid';tools.style.alignContent='start';tools.style.gap='5px';
+    tools.append(button('View',()=>{selected=index;refresh()}),button('↑',()=>swap(index,index-1),index===0),button('↓',()=>swap(index,index+1),index===scenes.length-1),button('×',()=>{if(scenes.length>1){scenes.splice(index,1);selected=Math.min(selected,scenes.length-1);refresh()}},scenes.length===1));
+    card.append(left,tools);$('shots').append(card);
+  });
+  const total=scenes.reduce((sum,s)=>sum+s.seconds,0);$('duration').textContent=`${total} seconds`;
+  $('sceneCounter').textContent=`Scene ${selected+1} of ${scenes.length}`;
+  const timeline=$('timeline');timeline.replaceChildren();scenes.forEach((scene,i)=>{const block=el('div',`${i+1} · ${scene.style}`);block.style.width=(100*scene.seconds/total)+'%';block.addEventListener('click',()=>{selected=i;refresh()});timeline.append(block)});
+  $('addShot').disabled=scenes.length>=6;
+  $('render').disabled=!imageData||total>24;
+  updatePreview();
+}
+function updatePreview(){const scene=scenes[selected];$('previewCaption').textContent=scene.caption;$('previewCaption').hidden=!scene.caption;$('productImage').style.transform=scene.style==='detail'?'scale(1.11)':scene.style==='closing'?'scale(1.02)':'scale(1)';$('productImage').style.transition='transform 700ms ease';}
+function swap(a,b){if(b<0||b>=scenes.length)return;[scenes[a],scenes[b]]=[scenes[b],scenes[a]];selected=b;refresh();}
+$('fileInput').addEventListener('change',async event=>{
+  const file=event.target.files[0];if(!file)return;
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>8*1024*1024){$('status').textContent='Use a PNG, JPEG or WebP under 8 MB.';return;}
+  const reader=new FileReader();reader.onload=()=>{imageData=reader.result;$('productImage').src=imageData;$('productImage').hidden=false;$('empty').hidden=true;$('status').textContent='Reference loaded. Verify packaging before export.';refresh()};reader.readAsDataURL(file);
+});
+$('previous').addEventListener('click',()=>{selected=(selected+scenes.length-1)%scenes.length;refresh()});
+$('next').addEventListener('click',()=>{selected=(selected+1)%scenes.length;refresh()});
+$('addShot').addEventListener('click',()=>{if(scenes.length>=6)return;scenes.push({style:'hero',seconds:3,caption:''});selected=scenes.length-1;refresh()});
+$('render').addEventListener('click',async()=>{
+  const total=scenes.reduce((sum,s)=>sum+s.seconds,0);
+  if(!imageData||total>24)return;
+  const control=$('render');control.disabled=true;$('status').textContent='Rendering local MP4 (no cloud API or AI video model)…';
+  try{
+    const response=await fetch('/api/render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data_url:imageData,scenes})});
+    if(!response.ok){let msg='Render failed';try{msg=(await response.json()).error||msg}catch{}throw new Error(msg)}
+    const url=URL.createObjectURL(await response.blob());const a=el('a');a.href=url;a.download='PHOENIX_AI_Studio_Internal_Concept.mp4';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);$('status').textContent='Internal MP4 exported. Do not publish without client, regulatory and owner approval.';
+  }catch(error){$('status').textContent=error.message||'Render failed'}finally{refresh();}
+});
+refresh();
+</script>
+</body></html>
