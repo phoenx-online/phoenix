@@ -2,6 +2,8 @@
 
 Status: APPROVED PREPARATION BASELINE — execution requires host verification
 
+Domain identity updated November 1, 2026; this document is a DEV baseline, not a production cutover authorization.
+
 ## Purpose
 
 Define the minimum isolation, cost, safety, and reproducibility rules for the first independent PHOENIX development environment.
@@ -13,7 +15,7 @@ This document does **not** authorize production deployment.
 - Repository: `phoenx-online/phoenix`
 - Default branch: `main`
 - Product: PHOENIX
-- Domain: `phoenx.online`
+- Domain: `phoenx.live`
 
 Only the canonical repository may be used as the source for the new PHOENIX runtime.
 
@@ -110,7 +112,7 @@ Preferred order:
 2. authenticated tunnel or reverse proxy only when remote testing is required
 3. dedicated DEV hostname only after TLS and access controls are ready
 
-Do not point `phoenx.online` or production-facing subdomains at DEV.
+Do not point `phoenx.live` or production-facing subdomains at DEV.
 
 ## GitHub Actions
 

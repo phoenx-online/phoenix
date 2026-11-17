@@ -3,12 +3,16 @@
 PHOENIX is an independent Craniumtek-incubated product for stores, creators, content, media buying, live selling, attribution, finance, and profitable growth.
 
 - **Product / brand:** PHOENIX
-- **Primary domain:** `phoenx.online`
+- **Primary domain:** `phoenx.live`
 - **Canonical GitHub organization:** `phoenx-online`
 - **Canonical repository:** `phoenx-online/phoenix`
 - **Technology / engineering incubator:** Craniumtek Solutions Inc.
 
-The spelling difference between **PHOENIX** and `phoenx.online` is intentional.
+The spelling difference between **PHOENIX** and `phoenx.live` is intentional.
+
+## Domain migration notice
+
+As of November 1, 2026 the approved canonical PHOENIX domain is **https://phoenx.live/**. This repository change does not by itself activate public DNS, transfer existing email/auth records, or decommission the previous domain. See [domain migration runbook](docs/domain-migration-2026-11-01.md).
 
 ## Current authority
 

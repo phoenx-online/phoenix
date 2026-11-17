@@ -5,7 +5,7 @@ Status: APPROVED BASELINE — PHX-M0.6
 ## Product identity
 
 - Product name: **PHOENIX**
-- Primary domain: **phoenx.online**
+- Primary domain: **phoenx.live**
 - Category: **Live Commerce Growth Operating System**
 - Positioning: One system for stores, creators, content, media buying, live selling, attribution, finance, and profitable growth.
 - Technology / engineering incubator: **Craniumtek Solutions Inc.**
@@ -107,17 +107,26 @@ The existing November 2025 scaffold is historical and is NOT automatically autho
 
 The obsolete GitHub Actions workflow that auto-deployed every `main` push to a DigitalOcean droplet as `root` has been physically removed. No automatic deployment from `main` is currently authorized.
 
+## Owner domain change — November 1, 2026
+
+The owner selected **phoenx.live** as PHOENIX's primary canonical website domain, replacing the former phoenx.online identity. This is an identity and migration decision, **not evidence that DNS cutover, production launch, or legacy-domain deletion has been executed**.
+
+- Do not delete, cancel, or repurpose the old registration until ownership and all traffic, mail, auth, integrations, callbacks, SSL, and other service dependencies have been audited.
+- Public inspection on the decision date found the old hostname returning an A.I.D.A console login rather than the expected PHOENIX landing page. Identify that service's owner and avoid displacing it.
+- No production activation is authorized by this domain-identity edit alone.
+- Follow `docs/domain-migration-2026-11-01.md` for cutover, checks, rollback, and retirement.
+
 ## Domain baseline
 
 Primary product/domain identity:
 
-- `phoenx.online` — public product domain
-- `www.phoenx.online` — public marketing site if required
-- `app.phoenx.online` — application
-- `api.phoenx.online` — API when required
-- `admin.phoenx.online` — platform administration when separately justified
+- `phoenx.live` — public product domain
+- `www.phoenx.live` — public marketing site if required
+- `app.phoenx.live` — application
+- `api.phoenx.live` — API when required
+- `admin.phoenx.live` — platform administration when separately justified
 
-The intentional spelling difference is authoritative: the **product/brand is PHOENIX**, while the **domain is phoenx.online**.
+The intentional spelling difference is authoritative: the **product/brand is PHOENIX**, while the **domain is phoenx.live**.
 
 Subdomains SHALL only be activated when the corresponding service exists and is independently secured.
 
