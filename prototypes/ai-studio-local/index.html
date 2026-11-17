@@ -12,7 +12,7 @@
 <header><div><b>PHOENIX <span style="color:var(--accent)">AI Studio</span></b><br><small>Offline editor &amp; MP4 renderer prototype</small></div><span class="pill">LOCAL DEV ONLY</span></header>
 <div class="shell">
 <section class="panel"><h2>01 · Product source</h2><label class="field"><span>Project title</span><input id="projectTitle" type="text" maxlength="80" value="Product Commercial Concept"></label><label class="field"><span>Reference product image (PNG, JPEG, WebP; max 8 MB)</span><input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp"></label><p class="note">Only an approved product image. The entire file stays in this browser and on your localhost machine during rendering; no AI provider is called.</p><h2 style="margin-top:28px">02 · Visual style</h2><div class="field"><span>Aspect ratio</span><input type="text" value="9:16 vertical" disabled></div><div class="field"><span>Export quality</span><input type="text" value="720 × 1280 MP4 · H.264 · 24 fps" disabled></div><div class="field"><span>Generation engine</span><input type="text" value="FFmpeg motion graphics (not AI generation)" disabled></div><div class="field"><span>Brand claim status</span><input type="text" value="Internal concept · Not approved" disabled></div></section>
-<section class="panel"><h2>03 · Live preview</h2><div class="preview-wrap"><div class="preview" id="preview"><div class="empty" id="empty">Upload your real product image to begin</div><img id="productImage" hidden alt="Uploaded product preview"><div class="caption" id="previewCaption" hidden></div><div class="watermark">INTERNAL CONCEPT — NOT APPROVED FOR PUBLICATION</div></div></div><div class="metrics"><span id="sceneCounter">Scene 1 of 3</span><span id="duration">0 seconds</span></div><div class="stack"><button class="btn" id="previous">← Previous shot</button><button class="btn" id="next">Next shot →</button></div><div class="timeline" id="timeline"></div><div class="status" id="status" role="status">Ready to preview. Upload an image to export.</div><button class="btn primary" id="render" disabled>Export internal MP4</button><p class="note">Render is CPU-based and can take some time. The server adds a permanent internal-review watermark. All rendered files are downloaded directly; the prototype retains no media library or user account.</p></section>
+<section class="panel"><h2>03 · Live preview</h2><div class="preview-wrap"><div class="preview" id="preview"><div class="empty" id="empty">Upload your real product image to begin</div><img id="productImage" hidden alt="Uploaded product preview"><div class="caption" id="previewCaption" hidden></div><div class="watermark">INTERNAL CONCEPT — NOT APPROVED FOR PUBLICATION</div></div></div><div class="metrics"><span id="sceneCounter">Scene 1 of 3</span><span id="duration">0 seconds</span></div><div class="stack"><button class="btn" id="previous">← Previous shot</button><button class="btn" id="next">Next shot →</button></div><div class="timeline" id="timeline"></div><div class="status" id="status" role="status">Ready to preview. Upload an image to export.</div><label class="field" style="display:flex;align-items:flex-start;gap:9px"><input type="checkbox" id="rightsConfirmed"><span style="color:var(--muted);font-size:12px">I confirm I am authorized to use this product image for a private internal preview. This does not authorize public publication.</span></label><button class="btn primary" id="render" disabled>Queue internal MP4</button><p class="note">CPU-based preview jobs run one at a time through a bounded local queue. Results expire after 15 minutes. No paid model, account login, public upload, or publishing authority is available.</p></section>
 <section class="panel right"><h2>04 · Shot timeline <small>(up to 6)</small></h2><div id="shots"></div><button id="addShot" class="btn">+ Add shot</button><p class="note">Adjust camera behavior, captions and duration per scene. The genuine product photo is retained as the visual source. A full CapCut-like multitrack editor is a later phase.</p></section>
 </div><p class="footer">PHOENIX internal prototype · No online publishing, payments, avatars, or external AI generation</p>
 <script>
@@ -50,7 +50,7 @@ function refresh(){
   $('sceneCounter').textContent=`Scene ${selected+1} of ${scenes.length}`;
   const timeline=$('timeline');timeline.replaceChildren();scenes.forEach((scene,i)=>{const block=el('div',`${i+1} · ${scene.style}`);block.style.width=(100*scene.seconds/total)+'%';block.addEventListener('click',()=>{selected=i;refresh()});timeline.append(block)});
   $('addShot').disabled=scenes.length>=6;
-  $('render').disabled=!imageData||total>24;
+  $('render').disabled=!imageData||total>24||!$('rightsConfirmed').checked;
   updatePreview();
 }
 function updatePreview(){const scene=scenes[selected];$('previewCaption').textContent=scene.caption;$('previewCaption').hidden=!scene.caption;$('productImage').style.transform=scene.style==='detail'?'scale(1.11)':scene.style==='closing'?'scale(1.02)':'scale(1)';$('productImage').style.transition='transform 700ms ease';}
@@ -63,14 +63,32 @@ $('fileInput').addEventListener('change',async event=>{
 $('previous').addEventListener('click',()=>{selected=(selected+scenes.length-1)%scenes.length;refresh()});
 $('next').addEventListener('click',()=>{selected=(selected+1)%scenes.length;refresh()});
 $('addShot').addEventListener('click',()=>{if(scenes.length>=6)return;scenes.push({style:'hero',seconds:3,caption:''});selected=scenes.length-1;refresh()});
+$('rightsConfirmed').addEventListener('change',refresh);
 $('render').addEventListener('click',async()=>{
   const total=scenes.reduce((sum,s)=>sum+s.seconds,0);
   if(!imageData||total>24)return;
-  const control=$('render');control.disabled=true;$('status').textContent='Rendering local MP4 (no cloud API or AI video model)…';
+  if(!$('rightsConfirmed').checked)return;
+  const control=$('render');control.disabled=true;$('status').textContent='Submitting zero-cost FFmpeg preview job. Cloud AI remains disabled.';
   try{
-    const response=await fetch('/api/render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data_url:imageData,scenes})});
-    if(!response.ok){let msg='Render failed';try{msg=(await response.json()).error||msg}catch{}throw new Error(msg)}
-    const url=URL.createObjectURL(await response.blob());const a=el('a');a.href=url;a.download='PHOENIX_AI_Studio_Internal_Concept.mp4';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);$('status').textContent='Internal MP4 exported. Do not publish without client, regulatory and owner approval.';
+    const submission={image_data_url:imageData,scenes,provider:'local_ffmpeg',rights_confirmed:true,max_cost_cents:0,idempotency_key:crypto.randomUUID()};
+    const response=await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(submission)});
+    if(!response.ok){let msg='Job rejected';try{msg=(await response.json()).error||msg}catch{}throw new Error(msg)}
+    const job=await response.json();
+    let finished=false;
+    for(let attempt=0;attempt<180;attempt++){
+      await new Promise(resolve=>setTimeout(resolve,1000));
+      const check=await fetch('/api/jobs/'+encodeURIComponent(job.id));
+      if(!check.ok)throw new Error('Could not retrieve render status');
+      const state=await check.json();
+      $('status').textContent=`Internal job ${state.state.toLowerCase()} · estimated $0.00 · external AI disabled.`;
+      if(state.state==='FAILED')throw new Error(state.error||'Local render failed');
+      if(state.state==='DONE'){finished=true;break;}
+    }
+    if(!finished)throw new Error('Preview is still rendering; check the job status locally before retrying.');
+    const video=await fetch('/api/jobs/'+encodeURIComponent(job.id)+'/video');
+    if(!video.ok)throw new Error('Rendered MP4 is not available');
+    const url=URL.createObjectURL(await video.blob());const a=el('a');a.href=url;a.download='PHOENIX_AI_Studio_Internal_Concept.mp4';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+    $('status').textContent='Internal MP4 downloaded. This is NOT approved for public publication.';
   }catch(error){$('status').textContent=error.message||'Render failed'}finally{refresh();}
 });
 refresh();

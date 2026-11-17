@@ -13,9 +13,10 @@ import re
 import shutil
 import subprocess
 import tempfile
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
+from studio_jobs import RenderCoordinator, JobInputError, JobConflictError, JobBusyError
 
 ROOT = Path(__file__).resolve().parent
 HOST = "127.0.0.1"
@@ -143,6 +144,10 @@ def render_video(payload: dict, target: Path, width: int = 720, height: int = 12
             raise RuntimeError("Could not assemble the MP4") from exc
 
 
+# One bounded, ephemeral worker. Not a durable queue, cloud adapter or production approval service.
+JOBS = RenderCoordinator(render_video, validate_project)
+
+
 class LocalHandler(BaseHTTPRequestHandler):
     server_version = "PhoenixLocalStudio/0.1"
 
@@ -168,7 +173,27 @@ class LocalHandler(BaseHTTPRequestHandler):
             return self._json(403, {"error": "Local-only access"})
         path = urlsplit(self.path).path
         if path == "/api/health":
-            return self._json(200, {"status": "ok", "local_only": True, "ai_generation": False, "ffmpeg": shutil.which("ffmpeg") is not None})
+            return self._json(200, {"status": "ok", "local_only": True, "ai_generation": False,
+                                    "provider": "local_ffmpeg", "paid_api_enabled": False,
+                                    "persistence": "ephemeral", "ffmpeg": shutil.which("ffmpeg") is not None})
+        match = re.fullmatch(r"/api/jobs/([0-9a-f-]{36})(/video)?", path)
+        if match:
+            job_id, suffix = match.group(1), match.group(2)
+            if suffix:
+                media = JOBS.result(job_id)
+                if media is None:
+                    return self._json(404, {"error": "Result not available"})
+                self.send_response(200)
+                self.send_header("Content-Type", "video/mp4")
+                self.send_header("Content-Disposition", 'attachment; filename="PHOENIX_Studio_Internal_Review.mp4"')
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("Content-Length", str(len(media)))
+                self.end_headers()
+                self.wfile.write(media)
+                return
+            status = JOBS.status(job_id)
+            return self._json(200, status) if status else self._json(404, {"error": "Job not found"})
         if path not in ("/", "/index.html"):
             return self._json(404, {"error": "Not found"})
         body = (ROOT / "index.html").read_bytes()
@@ -184,7 +209,10 @@ class LocalHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self._same_origin():
             return self._json(403, {"error": "Local-only access"})
-        if urlsplit(self.path).path != "/api/render":
+        path = urlsplit(self.path).path
+        if path == "/api/render":
+            return self._json(410, {"error": "Legacy synchronous render disabled; use /api/jobs with rights confirmation and zero cost limit"})
+        if path != "/api/jobs":
             return self._json(404, {"error": "Not found"})
         if self.headers.get("Content-Type", "").split(";")[0] != "application/json":
             return self._json(415, {"error": "Expected JSON"})
@@ -196,22 +224,14 @@ class LocalHandler(BaseHTTPRequestHandler):
             return self._json(413, {"error": "Request too large"})
         try:
             payload = json.loads(self.rfile.read(length))
-            with tempfile.TemporaryDirectory(prefix="phx-response-") as td:
-                output = Path(td) / "preview.mp4"
-                render_video(payload, output)
-                media = output.read_bytes()
-                self.send_response(200)
-                self.send_header("Content-Type", "video/mp4")
-                self.send_header("Content-Disposition", 'attachment; filename="PHOENIX_AI_Studio_Internal_Concept.mp4"')
-                self.send_header("Cache-Control", "no-store")
-                self.send_header("X-Content-Type-Options", "nosniff")
-                self.send_header("Content-Length", str(len(media)))
-                self.end_headers()
-                self.wfile.write(media)
-        except (ValueError, json.JSONDecodeError) as exc:
+            job = JOBS.submit(payload)
+            self._json(202, job)
+        except JobConflictError as exc:
+            self._json(409, {"error": str(exc)})
+        except JobBusyError as exc:
+            self._json(429, {"error": str(exc)})
+        except (JobInputError, InputError, ValueError, json.JSONDecodeError) as exc:
             self._json(400, {"error": str(exc)})
-        except RuntimeError as exc:
-            self._json(500, {"error": str(exc)})
 
 
 def main():
@@ -219,7 +239,12 @@ def main():
         raise SystemExit("This prototype needs a DejaVuSans font for visible internal watermark")
     print(f"PHOENIX AI Studio local prototype: http://{HOST}:{PORT}")
     print("Not for public hosting. No AI video provider, remote uploads, or publishing.")
-    HTTPServer((HOST, PORT), LocalHandler).serve_forever()
+    server = ThreadingHTTPServer((HOST, PORT), LocalHandler)
+    server.daemon_threads = True
+    try:
+        server.serve_forever()
+    finally:
+        JOBS.close()
 
 
 if __name__ == "__main__":
