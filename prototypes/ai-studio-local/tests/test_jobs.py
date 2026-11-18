@@ -79,6 +79,20 @@ class QueueContractTests(unittest.TestCase):
         finally:
             separate.close()
 
+    def test_completed_preview_expires_on_direct_download_without_status_poll(self):
+        # Direct GET /api/jobs/{id}/video must not bypass the 15-minute TTL.
+        p = fixture()
+        created = self.manager.submit(p)
+        self.assertEqual(await_finished(self.manager, created['id'])['state'], 'DONE')
+        self.assertEqual(self.manager.result(created['id']), b'fake mp4 for queue test')
+        with self.manager.lock:
+            job = self.manager.jobs[created['id']]
+            job['_finished_at'] = time.monotonic() - self.manager.TTL_SECONDS - 1
+        # Do not call status() or submit() first; only result() may perform cleanup.
+        self.assertIsNone(self.manager.result(created['id']))
+        self.assertIsNone(self.manager.status(created['id']))
+        self.assertFalse((Path(self.manager.root.name) / (created['id'] + '.mp4')).exists())
+
     def test_result_metadata_omits_source_image_and_status_unknown(self):
         p = fixture(); job = self.manager.submit(p)
         self.assertNotIn('image_data_url', json.dumps(job))
