@@ -82,47 +82,64 @@ test('actual-user read-only visual evidence', async ({ page }, testInfo) => {
     });
   });
 
-  const journeys = selectedJourneys();
-  expect(journeys.length, 'At least one journey must be configured').toBeGreaterThan(0);
+  try {
+    const journeys = selectedJourneys();
+    expect(journeys.length, 'At least one journey must be configured').toBeGreaterThan(0);
 
-  for (const [index, journey] of journeys.entries()) {
-    expect(journey.mode || 'read-only').toBe('read-only');
-    assertSafeRoute(journey.path);
+    for (const [index, journey] of journeys.entries()) {
+      expect(journey.mode || 'read-only').toBe('read-only');
+      assertSafeRoute(journey.path);
 
-    const response = await page.goto(journey.path, { waitUntil: 'domcontentloaded' });
-    const status = response?.status() ?? 0;
+      const journeyEvidence = {
+        name: journey.name,
+        requestedPath: journey.path,
+        status: null,
+        outcome: 'in-progress'
+      };
+      diagnostics.journeys.push(journeyEvidence);
 
-    expect(status, `${journey.name} returned no HTTP response`).toBeGreaterThan(0);
-    expect(status, `${journey.name} returned HTTP ${status}`).toBeLessThan(400);
-    await expect(page.locator('body')).toBeVisible();
+      const response = await page.goto(journey.path, { waitUntil: 'domcontentloaded' });
+      const status = response?.status() ?? 0;
+      journeyEvidence.status = status;
+      journeyEvidence.finalUrl = page.url();
 
-    const screenshotName =
-      `${String(index + 1).padStart(2, '0')}-${slug(journey.name)}-${slug(testInfo.project.name)}.png`;
+      expect(status, `${journey.name} returned no HTTP response`).toBeGreaterThan(0);
+      expect(status, `${journey.name} returned HTTP ${status}`).toBeLessThan(400);
+      await expect(page.locator('body')).toBeVisible();
 
-    await page.screenshot({
-      path: testInfo.outputPath(screenshotName),
-      fullPage: true
-    });
+      const screenshotName =
+        `${String(index + 1).padStart(2, '0')}-${slug(journey.name)}-${slug(testInfo.project.name)}.png`;
 
-    diagnostics.journeys.push({
-      name: journey.name,
-      requestedPath: journey.path,
-      finalUrl: page.url(),
-      status,
-      title: await page.title(),
-      screenshot: screenshotName
+      await page.screenshot({
+        path: testInfo.outputPath(screenshotName),
+        fullPage: true
+      });
+
+      Object.assign(journeyEvidence, {
+        title: await page.title(),
+        screenshot: screenshotName,
+        outcome: 'passed'
+      });
+    }
+
+    expect(
+      diagnostics.pageErrors,
+      `Uncaught page errors: ${JSON.stringify(diagnostics.pageErrors, null, 2)}`
+    ).toEqual([]);
+  } catch (error) {
+    const activeJourney = diagnostics.journeys.find((journey) => journey.outcome === 'in-progress');
+    if (activeJourney) activeJourney.outcome = 'failed';
+    diagnostics.failure = {
+      name: error.name,
+      message: error.message,
+      url: page.url()
+    };
+    throw error;
+  } finally {
+    diagnostics.finishedAt = new Date().toISOString();
+    await testInfo.attach('diagnostics.json', {
+      body: Buffer.from(JSON.stringify(diagnostics, null, 2)),
+      contentType: 'application/json'
     });
   }
-
-  diagnostics.finishedAt = new Date().toISOString();
-
-  await testInfo.attach('diagnostics.json', {
-    body: Buffer.from(JSON.stringify(diagnostics, null, 2)),
-    contentType: 'application/json'
-  });
-
-  expect(
-    diagnostics.pageErrors,
-    `Uncaught page errors: ${JSON.stringify(diagnostics.pageErrors, null, 2)}`
-  ).toEqual([]);
 });
