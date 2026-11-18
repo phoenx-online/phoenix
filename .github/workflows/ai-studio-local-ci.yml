@@ -1,0 +1,40 @@
+name: PHOENIX AI Studio local security gate
+
+on:
+  push:
+    branches:
+      - fix/ai-studio-result-ttl-gate-20261118
+    paths:
+      - "prototypes/ai-studio-local/**"
+      - ".github/workflows/ai-studio-local-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-studio-local-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  exact-head-local-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: prototypes/ai-studio-local
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deterministic media prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core
+      - name: Run unit and integration regressions
+        run: python3 -m unittest discover -s tests -v
+      - name: Run localhost HTTP security smoke
+        run: python3 tests/smoke_http.py
