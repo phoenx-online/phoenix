@@ -126,6 +126,8 @@ class RenderCoordinator:
 
     def result(self, job_id: str) -> bytes | None:
         with self.lock:
+            # Enforce expiry on the direct-download path, even without status polling.
+            self._expire()
             job = self.jobs.get(job_id)
             if not job or job['state'] != 'DONE':
                 return None
